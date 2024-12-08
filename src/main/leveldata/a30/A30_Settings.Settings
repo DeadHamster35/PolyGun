@@ -1,0 +1,7 @@
+public char* A30_LevelName = "";
+public char* A30_SerialNumber = "T3213F43VS-WV42A2AT";
+public uint A30_OpaqueTable_Address = 0xE348;
+public uint A30_TranslucentTable_Address = 0xE390;
+public uint A30_SurfaceTable_Address = 0xE3B0;
+public uint A30_SurfaceGrid_Address = 0x2B3C0;
+public int A30_PolyCount = 0x5CD;
