@@ -15,6 +15,7 @@ extern void ResetNavPath(int Player);
 extern void InitNavArray();
 extern void BuildNavMesh();
 extern void BStar(int PlayerIndex, short TargetTriangle);
+extern int BSTARDistance(Vector TargetPosition, short TargetTriangle, float TargetDistance);
 
 #endif
 

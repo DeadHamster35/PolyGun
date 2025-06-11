@@ -20,6 +20,22 @@ glabel _A30Seg6
 glabel _A30Seg6END
 
 
+glabel _RiverBedSeg4
+.incbin "/src/main/leveldata/RiverBed/Segment4.MIO0"
+.balign 16
+glabel _RiverBedSeg4END
+
+glabel _RiverBedSeg5
+.incbin "/src/main/leveldata/RiverBed/Segment5.MIO0"
+.balign 16
+glabel _RiverBedSeg5END
+
+glabel _RiverBedSeg6
+.incbin "/src/main/leveldata/RiverBed/Segment6.MIO0"
+.balign 16
+glabel _RiverBedSeg6END
+
+
 glabel _sandcastle4
 .incbin "/src/main/leveldata/sandcastle/Segment4.MIO0"
 .balign 16

@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "common.h": "c",
+        "animations.h": "c",
+        "graphic.h": "c",
+        "math.h": "c",
+        "RiverBed_Settings.C": "cpp",
+        "compressionbuffer.h": "c"
+    }
+}

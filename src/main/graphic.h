@@ -27,6 +27,7 @@ typedef struct {
     Mtx     Translation[4];
     Mtx     Scale[4];
     Mtx     Rotation[4];
+    LookAt  Reflection[4];
 } MatrixMap;
 
 typedef struct {
@@ -47,6 +48,8 @@ extern Vp ViewportP2;
 extern Vp ViewportP3;
 extern Vp ViewportP4;
 
+
+
 extern Mtx EntityMap[4096];
 extern short CurrentEntity[4];
 extern int GlobalFrame;
@@ -55,6 +58,8 @@ extern short RenderEnable, GameSequence;
 extern void gfxRCPInit(void);
 extern void gfxClearCfb(void);
 extern void SetMatrix(int Mode);
+ushort GetRGBA16(int R, int G, int B, int A);
+extern void DrawHUD(int PlayerIndex);
 extern void DrawLevelScene(Dynamic *dynamicp, int PlayerIndex);
 /*------------------------------- other extern define -----------------------*/
 extern Gfx setup_rdpstate[];

@@ -1,10 +1,11 @@
-    #ifndef CommonH
+#ifndef CommonH
 #define CommonH
 
 
 #include <ultra64.h>
-#define DEG1 0xB9
-#define DEGF 185.0f
+
+#define DEG1 0xB6
+#define DEGF 182.0f
 
 
 
@@ -76,7 +77,7 @@ typedef short SVector[3];
 #define JUMPHEIGHT -2.75f * THIRYFPS
 #define TERMINALVELOCITY 16.0f * THIRYFPS
 #define MINIMALVELOCITY 0.1f * THIRYFPS
-#define MAXLOOK 25
+#define MAXLOOK 45
 #define MAXBULLETS 100
 
 
@@ -85,6 +86,7 @@ typedef short SVector[3];
 
 typedef Vector  VertexArrayF[3];
 typedef SVector VertexArray[3];
+
 
 typedef struct {
     Vector  Start;
@@ -190,21 +192,69 @@ typedef struct {
     PGScreen    Screen;
 } PGCamera;
 
+typedef struct PolyKeyFrame
+{
+    short       Time;
+    SVector     Data;
+    
+} PolyKeyFrame;
+
+typedef struct PolyAnime
+{
+	PolyKeyFrame*   PositionData;
+    PolyKeyFrame*   RotationData;
+    PolyKeyFrame*   ScalingData;
+	ushort			PositionCount, RotationCount, ScalingCount;
+}PolyAnime;
+
+typedef struct PolyNode{
+    uint    TextureOffset;	
+	uint	MeshCount;
+	uint*   MeshOffsets;
+    uint    ClosingDL;
+} PolyNode;
+
+typedef struct PB{
+    	float               MeshScale;
+	    PolyAnime*		AnimeData;
+    	ushort              NodeCount, ChildCount;
+    	PolyNode*           NodeOffset;
+    	struct PolyBone*    ChildOffset;
+} PolyBone;
+
+
+
 typedef struct {
-    short       FiringRate, BulletSpeed;
-    short       BaseDamage, ErrorAccel;
-    short       ErrorMin, ErrorMax;
-    short       MagazineSize, MaxAmmo;
-    short       ReloadTime, BulletLife;
-    short       CameraRecoilX, CameraRecoilY;
-    short       CameraImpulseX, CameraImpulseY;
-    short       MaxImpulseX, MaxImpulseY;
-    void        (*DrawCall)();  
-    Gfx         (*Reticle);  
+    PolyBone*   RootBone;
+    int       FrameCount;
+} AnimeHolster;
+
+
+typedef struct {
+    AnimeHolster*   Idle;
+    AnimeHolster*   ReloadFull;
+    AnimeHolster*   ReloadEmpty;
+    AnimeHolster*   Melee;
+    AnimeHolster*   Grenade;
+    AnimeHolster*   Fire;
+} WeaponBandolier;
+
+
+typedef struct {
+    short           FiringRate, BulletSpeed;
+    short           BaseDamage, ErrorAccel;
+    short           ErrorMin, ErrorMax;
+    short           MagazineSize, MaxAmmo;
+    short           ReloadTime, BulletLife;
+    short           CameraRecoilX, CameraRecoilY;
+    short           CameraImpulseX, CameraImpulseY;
+    short           MaxImpulseX, MaxImpulseY;
+    WeaponBandolier Bandolier;
+    Gfx             (*Reticle);  
 }   WeaponClass;
 
 typedef struct {
-    WeaponClass*    Class;
+    WeaponClass*    Class;    
     short           Magazine,Ammo;
 }   WeaponEquipment;
 
@@ -213,13 +263,12 @@ typedef struct {
     Locate      Location;
     short       Distance, Lifespan;
     short       Damage, InitialSpeed;
-    short       Weight, PAD;
+    ushort      Weight, RGB;
 } Projectile;
 
 typedef struct{
     short Health,Shield;
 } PlayerHealth;
-
 
 
 /*
@@ -241,18 +290,28 @@ typedef struct{
 0x8000
 */
 
-#define PLAYERFIRE          0x01
-#define PLAYERJUMP          0x02 //A
-#define PLAYERPUNCH         0x04 //B
-#define PLAYERSWAPGUN       0x08 //R+A
-#define PLAYERSWAPEQUIP     0x10 //R+B
 
 
-#define PLAYERCROUCH        0x01
-#define PLAYERFPS           0x02
-#define PLAYERBSTAR         0x04
+#define ACTIONJUMP          0x01 //A
+#define ACTIONMELEE         0x02 //B
+#define ACTIONFIRE          0x04 //Z
+#define ACTIONSWAPGUN       0x08 //R+A
+#define ACTIONRELOAD        0x10 //R+B
+#define ACTIONGRENADE       0x20 //R+Z
 
 
+#define STATUSCROUCH        0x01
+#define STATUSFPS           0x02
+#define STATUSBSTAR         0x04
+#define STATUSINAIR         0x08
+#define STATUSRELOADING     0x10
+#define STATUSSWAPGUN       0x20
+#define STATUSFIRING        0x40
+#define STATUSMELEE         0x80
+
+typedef struct {
+    short   CurrentTime, MaxTime;
+} AnimeTimer;
 
 typedef struct{
     short               PlayerIndex, IsCPU;
@@ -260,19 +319,35 @@ typedef struct{
     Vector              PushVelocity[3];   
     float               Height;
     short               HitTri[4];
-    short               JumpTimer, IsJump;
+    short               JumpTimer, PAD;
+    AnimeTimer          FPAnimeTimer, AnimeTimer;
     short               PlayerTarget;
     char                ZTarget, SelectedWeapon;
     short               IFrames, FFrames;
     ushort              ActionBits, StatusBits;
     PlayerHealth        HealthData;
-    WeaponEquipment    PrimaryWeapon;
-    WeaponEquipment    SecondaryWeapon;
+    AnimeHolster        *Anime, *FPAnime;
+    WeaponEquipment     WeaponArray[2];
 } Player;
 
 typedef struct{
+    short   Min, Max;    
+} MinMax;
+
+typedef struct{
+    MinMax  FireDistance;
+    WeaponClass*    PrimaryWeapon;
+    WeaponClass*    SecondaryWeapon;
+} Actor;
+
+typedef struct{
     Vector      CurrentTarget;
+    Vector      LookAt;
+    SVector     WalkVector;
     short       CurrentPathIndex, Difficulty;
+    short       PathLocked, PathTimer;
+    short       TargetPlayer, MovementStress;
+    Actor*      ActorData;
 } BotStruct;
 
 typedef struct {
@@ -287,6 +362,12 @@ typedef struct {
 
 } LevelHeaderStruct;
 
+typedef struct {
+    SVector     Position;
+    SVector     Angle;
+    short       FlagA, FlagB;
+} ObjectClass;
 
+#include "../src/main/assets/assets.h"
 #endif
 

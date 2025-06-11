@@ -20,38 +20,44 @@ int LevelIndex;
 uint Segment4Start[] = 
 {
     (uint)&_A30Seg4,
+    (uint)&_RiverBedSeg4,
     (uint)&_sandcastle4
 };
 uint Segment5Start[] = 
 {
     (uint)&_A30Seg5,
+    (uint)&_RiverBedSeg5,
     (uint)&_sandcastle5
 };
 uint Segment6Start[] = 
 {
     (uint)&_A30Seg6,
+    (uint)&_RiverBedSeg6,
     (uint)&_sandcastle6
 };
 uint Segment4Ends[] = 
 {
     (uint)&_A30Seg4END,
+    (uint)&_RiverBedSeg4END,
     (uint)&_sandcastle4END
 };
 uint Segment5Ends[] = 
 {
     (uint)&_A30Seg5END,
+    (uint)&_RiverBedSeg5END,
     (uint)&_sandcastle5END
 };
 uint Segment6Ends[] = 
 {
     (uint)&_A30Seg6END,
+    (uint)&_RiverBedSeg6END,
     (uint)&_sandcastle6END
 };
 
-uint TableAddress[] =   {0x0600E348, 0x0600BD78};
-uint TableSurface[] =   {0x0600E3B0, 0x0600BDB0};
-uint TableGrid[] =      {0x0602B3C0, 0x0600DBB0};
-uint SurfaceCount[] =   {0x05CD, 0x60};
+uint TableAddress[] =   {0x0600E348, 0x06002618, 0x0600BD78};
+uint TableSurface[] =   {0x0600E3B0, 0x060026B0, 0x0600BDB0};
+uint TableGrid[] =      {0x0602B3C0, 0x06027B90, 0x0600DBB0};
+uint SurfaceCount[] =   {0x05CD, 0x776, 0x60};
 
 
 

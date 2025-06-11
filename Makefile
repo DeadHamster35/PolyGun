@@ -39,7 +39,10 @@ BOOT		:= /usr/lib/n64/PR/bootcode/boot.6102
 BOOT_OBJ	:= $(BUILD_DIR)/boot.6102.o
 
 # Directories containing source files
-SRC_DIRS += src src/buffers src/main/assets/models src/main sound asm src/main/leveldata/a30
+SRC_DIRS += src src/buffers src/main sound asm 
+
+SRC_DIRS += src/main/objects/
+SRC_DIRS += $(shell find src/main/assets -type d)
 
 C_FILES           := $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.c))
 S_FILES           := $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.s))

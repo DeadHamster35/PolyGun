@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <nusys.h>
 #include <nualsgi_n.h>
+#include "actors.h"
 #include "main.h"
 #include "segment.h"
 #include "levels.h"
@@ -72,8 +73,8 @@ void mainproc(void)
     /* Set the stage number to 0 */
 
     
-
-    stage = 0;
+    InitNewGame();
+    stage = 1;
     while (1)
     {
         
@@ -81,9 +82,7 @@ void mainproc(void)
         {
             case 0:
             {
-                stage = -1;
-                InitNewGame();
-                initStage00();
+                stage = -1;                
                 nuGfxFuncSet((NUGfxFunc)stage00);
                 nuGfxDisplayOn();
                 break;
@@ -92,7 +91,6 @@ void mainproc(void)
             case 1:
             {
                 stage = -1;
-                InitNewGame();
                 initStage01();
                 nuGfxFuncSet((NUGfxFunc)stage01);
                 nuGfxDisplayOn();
@@ -283,14 +281,17 @@ void InitNewGame()
 {
     RenderEnable = 0;
 
-    PlayerCount = 3;
-    BotCount = 0;
+    PlayerCount = 1;
+    BotCount = 3;
+    
+    InitWeaponClasses();
+    InitActors();
     initAllPlayers();
     InitScreenSystem();
-    InitWeaponClasses();
+    
     initProjectiles();
 
-    LevelIndex = 0;
+    LevelIndex = 1;
     LoadHeader();
     LoadLevelData();
     

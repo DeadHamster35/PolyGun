@@ -19,6 +19,10 @@ extern char _A30Seg4[], _A30Seg4END[];
 extern char _A30Seg5[], _A30Seg5END[];
 extern char _A30Seg6[], _A30Seg6END[];
 
+extern char _RiverBedSeg4[], _RiverBedSeg4END[];
+extern char _RiverBedSeg5[], _RiverBedSeg5END[];
+extern char _RiverBedSeg6[], _RiverBedSeg6END[];
+
 extern char _sandcastle4[], _sandcastle4END[];
 extern char _sandcastle5[], _sandcastle5END[];
 extern char _sandcastle6[], _sandcastle6END[];

@@ -90,16 +90,6 @@ void makeDL01(void)
     nuDebTaskPerfBar0(1, 200, NU_SC_NOSWAPBUFFER);
 
     /* Display the drawing state  */
-    nuDebConTextPos(0, 3, 3);
-    nuDebConCPuts(0, "Stage 01");
-    nuDebConTextPos(0, 3, 4);
-    if (pendflag == 0)
-        nuDebConCPuts(0, "2 Frame Buffer");
-    else
-        nuDebConCPuts(0, "3 Frame Buffer");
-    nuDebConTextPos(0, 3, 5);
-    sprintf(conbuf, "%2d draw/sec", dspcount);
-    nuDebConCPuts(0, conbuf);
 
     /* Draw characters on the frame buffer */
     nuDebConDisp(NU_SC_SWAPBUFFER);

@@ -1373,12 +1373,12 @@ void CheckProjectileCollision(int BulletIndex)
         }
     }
 
-    if (LocalBullet->Location.Position[2] > 32768)
+    if (LocalBullet->Location.Position[2] - BulletRadi > 32000)
     {
         LocalBullet->Status = BULLET_INACTIVE;
         return;
     }
-    if (LocalBullet->Location.Position[2] < -32768)
+    if (LocalBullet->Location.Position[2] + BulletRadi < -32000)
     {
         LocalBullet->Status = BULLET_INACTIVE;
         return;

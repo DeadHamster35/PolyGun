@@ -251,15 +251,15 @@ void ScalingMatrix(AffineMtx matrix , float scale)
 
 void ScaleMatrixXYZFixed(AffineMtx Matrix, SVector FScale)
 {
-    Matrix[0][0] *= (float)(FScale[0] / 100.0f);
-    Matrix[1][0] *= (float)(FScale[0] / 100.0f);
-    Matrix[2][0] *= (float)(FScale[0] / 100.0f);
-    Matrix[1][0] *= (float)(FScale[1] / 100.0f);
-    Matrix[1][1] *= (float)(FScale[1] / 100.0f);
-    Matrix[1][2] *= (float)(FScale[1] / 100.0f);
-    Matrix[2][0] *= (float)(FScale[2] / 100.0f);
-    Matrix[2][1] *= (float)(FScale[2] / 100.0f);
-    Matrix[2][2] *= (float)(FScale[2] / 100.0f);
+    Matrix[0][0] *= (float)(FScale[0] * 0.01f);
+    Matrix[1][0] *= (float)(FScale[0] * 0.01f);
+    Matrix[2][0] *= (float)(FScale[0] * 0.01f);
+    Matrix[1][0] *= (float)(FScale[1] * 0.01f);
+    Matrix[1][1] *= (float)(FScale[1] * 0.01f);
+    Matrix[1][2] *= (float)(FScale[1] * 0.01f);
+    Matrix[2][0] *= (float)(FScale[2] * 0.01f);
+    Matrix[2][1] *= (float)(FScale[2] * 0.01f);
+    Matrix[2][2] *= (float)(FScale[2] * 0.01f);
 }
 
 extern void TransformMatrix(AffineMtx InputMatrix, Vector Position, Vector Look, Vector Up)
@@ -421,6 +421,7 @@ unsigned short Random()
 	return(HiddenSeed);
 
 }
+
 
 
 int GetRNG(int Limit)

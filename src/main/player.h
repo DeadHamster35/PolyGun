@@ -13,7 +13,7 @@ extern void initPlayer(int PlayerIndex);
 extern void initCamera(int PlayerIndex);
 extern void initAllPlayers();
 extern void UpdatePlayerControls();
-extern void UpdateBotControls();
+extern void ResetPlayerStatus(int PlayerIndex);
 extern void UpdateMenuControls();
 extern void UpdatePlayerResponse();
 extern AffineMtx CameraMatrix[4];

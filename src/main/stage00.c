@@ -12,7 +12,8 @@
 #include "memory.h"
 #include "player.h"
 #include "weapon.h"
-#include "assets/models/cyborgwalk.h"
+#include "intelligence.h"
+#include "assets/assets.h"
 
 static float triPos_x; /* The display position, X */
 static float triPos_y; /* The display position, Y */
@@ -58,19 +59,18 @@ void makeDL00(void)
     gDPSetCycleType(glistp++, G_CYC_1CYCLE);
     gDPSetRenderMode(glistp++, G_RM_AA_OPA_SURF, G_RM_AA_OPA_SURF2);
 
+
+    
     for (int ThisPlayer = 0; ThisPlayer < PlayerCount; ThisPlayer++)
     {
         DrawLevelScene(dynamicp,ThisPlayer);
+        
+        DrawHUD(ThisPlayer);
         gDPPipeSync(glistp++);
     }
     
-
-    CyborgHolster.CurrentFrame ++;
-    if (CyborgHolster.CurrentFrame > CyborgHolster.FrameCount)
-    {
-        CyborgHolster.CurrentFrame = 0;
-    }
     
+   
     gDPFullSync(glistp++);
     gSPEndDisplayList(glistp++);
 
@@ -106,6 +106,15 @@ void updateGame00(void)
     nuContDataGetEx((NUContData*)&contdata[1], 1);
     nuContDataGetEx((NUContData*)&contdata[2], 2);
     nuContDataGetEx((NUContData*)&contdata[3], 3);
+    
+    if (contdata[0].trigger & START_BUTTON)
+    {
+        /* Remove the call-back function.*/
+        nuGfxFuncRemove();
+        /* Specify next stage to main */
+        stage = 1;
+    }
+
 
     UpdatePlayerControls();
     UpdateBotControls();
