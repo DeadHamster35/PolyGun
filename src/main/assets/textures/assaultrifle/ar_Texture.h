@@ -7,7 +7,6 @@
 #include "common.h"
 
 
-extern Lights1 AR_Lights[];
 extern Gfx Draw_ar_T[];
 extern Gfx Draw_ar_T_Closing[];
 #endif

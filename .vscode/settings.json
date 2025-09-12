@@ -5,6 +5,11 @@
         "graphic.h": "c",
         "math.h": "c",
         "RiverBed_Settings.C": "cpp",
-        "compressionbuffer.h": "c"
+        "compressionbuffer.h": "c",
+        "sphere001_model.h": "c",
+        "pathfinding.h": "c",
+        "shieldhealthbar_texture.h": "c",
+        "*.txt": "c",
+        "collision.h": "c"
     }
 }

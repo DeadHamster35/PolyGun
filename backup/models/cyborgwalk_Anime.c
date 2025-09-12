@@ -1229,5 +1229,5 @@ AnimeHolster CyborgHolster =
 {
     .RootBone = (PolyBone*)&BodyBone_Bone,
     .FrameCount = 36,
-    
+    .ActionFrame = 0
 };

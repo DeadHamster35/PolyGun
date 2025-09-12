@@ -12,6 +12,7 @@
 
 
 extern Actor Elite;
+extern Actor MPBot;
 extern void InitActors();
 
 #endif

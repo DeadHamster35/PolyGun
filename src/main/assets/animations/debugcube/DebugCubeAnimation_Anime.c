@@ -187,7 +187,8 @@ static PolyBone BodyBone_Bone =
 AnimeHolster DebugCubeAnimation =
 {
 	.RootBone = (PolyBone*)&BodyBone_Bone,
-	.FrameCount = 61
+	.FrameCount = 61,
+    .ActionFrame = 0
 };
 
 

@@ -682,7 +682,8 @@ static PolyBone BodyBone_Bone =
 AnimeHolster HP_Idle =
 {
 	.RootBone = (PolyBone*)&BodyBone_Bone,
-	.FrameCount = 37
+	.FrameCount = 37,
+    .ActionFrame = 0
 };
 
 

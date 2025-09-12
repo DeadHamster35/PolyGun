@@ -335,8 +335,6 @@ int BStar(int PlayerIndex, short TargetTriangle)
 
         if (CurrentNav == -1)
         {
-            
-
             //something terrible has happened.
             return -1;
         }
@@ -347,12 +345,11 @@ int BStar(int PlayerIndex, short TargetTriangle)
         if (TriIndex == TargetTriangle)
         {
             //Yes!!
-            //Do more stuff!n
+            //Do more stuff!
             ResetNavPath(PlayerIndex);
             CreateNavPath(PlayerIndex, CurrentNav);
             GameBots[PlayerIndex].CurrentPathIndex = 1;
             ResetNavArray();
-            //PRINTF("NavArray %d\n", NavSize);
             return 1;
         }
 

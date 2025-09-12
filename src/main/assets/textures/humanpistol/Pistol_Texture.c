@@ -138,9 +138,6 @@ Gfx Draw_Pistol_T[] =
 	//Start Texture Load
 	//Pistol
 
-	gsSPNumLights(1),
-    gsSPLight((&AR_Lights[0].l[0]),1),
-	gsSPLight((&AR_Lights[0].a),2),
     gsDPSetCycleType(G_CYC_2CYCLE),
     gsSPClearGeometryMode(  12518917),
 	gsSPSetGeometryMode(G_ZBUFFER | G_SHADE | G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),

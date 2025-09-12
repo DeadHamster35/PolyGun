@@ -1,12 +1,13 @@
 # Makefile to build nu5
 
-TARGET_STRING := nu5
+TARGET_STRING := PolyGun64
 TARGET := $(TARGET_STRING)
 
 # Preprocessor definitions
 DEFINES := _FINALROM=1 NDEBUG=1 F3DEX_GBI_2=1
 
 SRC_DIRS :=
+ASM_DIRS :=
 
 # Whether to hide commands or not
 VERBOSE ?= 0
@@ -41,8 +42,10 @@ BOOT_OBJ	:= $(BUILD_DIR)/boot.6102.o
 # Directories containing source files
 SRC_DIRS += src src/buffers src/main sound asm 
 
-SRC_DIRS += src/main/objects/
+SRC_DIRS += src/main/objects
+SRC_DIRS += $(shell find src/leveldata -type d)
 SRC_DIRS += $(shell find src/main/assets -type d)
+SRC_DIRS += $(shell find src/main/levels -type d)
 
 C_FILES           := $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.c))
 S_FILES           := $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.s))

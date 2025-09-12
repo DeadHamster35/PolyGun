@@ -16,6 +16,21 @@
 #define	SegmentNumber(a)	(((unsigned int)(a) << 4) >> 28)
 #define	SegmentAddress(num, off)	(((num) << 24) + (off))
 
+
+#define gsNinLoadTextureImage(timg,fmt,siz,width,height,tmem,tt)	\
+	gsDPSetTextureImage(fmt,siz,1,timg),	\
+	gsDPTileSync(),	\
+	gsDPSetTile(fmt,siz,0,tmem,tt,0,0,0,0,0,0,0),	\
+	gsDPLoadSync(),	\
+	gsDPLoadBlock(tt,0,0,width*height-1,CALC_DXT(width,siz##_BYTES))
+
+#define gsNinSetupTileDescription(fmt,siz,width,height,tmem,tt,cs,ms,ss,ct,mt,st)	\
+	gsDPTileSync(),	\
+	gsDPSetTile(fmt,siz,((((width)*siz##_LINE_BYTES)+7)>>3),tmem,tt,0,ct,mt,st,cs,ms,ss),	\
+	gsDPSetTileSize(tt,0,0,(width-1)<<G_TEXTURE_IMAGE_FRAC,(height-1)<<G_TEXTURE_IMAGE_FRAC)
+
+
+
 #define MathABS(x)	((x) < 0 ? -(x) : (x))
 /* Buttons */
 
@@ -60,8 +75,10 @@
 typedef unsigned int uint;
 typedef unsigned short ushort;
 typedef float AffineMtx[4][4];
+typedef float Quaternion[4];
 typedef float Vector[3];
 typedef short SVector[3];
+typedef ushort USVector[3];
 
 #define ASTAR   128
 #define MAXTRI 9001
@@ -73,14 +90,25 @@ typedef short SVector[3];
 
 #define THIRYFPS 2.0f
 #define GRAVITY 0.2f * THIRYFPS
-#define MAXSPEED 1.75f * THIRYFPS
+#define MAXSPEED 2.25f * THIRYFPS
 #define JUMPHEIGHT -2.75f * THIRYFPS
 #define TERMINALVELOCITY 16.0f * THIRYFPS
 #define MINIMALVELOCITY 0.1f * THIRYFPS
 #define MAXLOOK 45
 #define MAXBULLETS 100
+#define MELEEBULLET MAXBULLETS + 1
+#define MAXDYNAMICPICKS 32
+#define MAXSTATICPICKS 100
+#define MAXSPAWNS 100
+#define WEAPONARRAYCOUNT 3
 
+#define MAXHEALTH 75
+#define MAXSHIELD 75
 
+#define PICKUPRADIUS 25.0f
+#define PICKUPDRAW  100.0f
+
+#define BULLET_HIT 2
 #define BULLET_ACTIVE 1
 #define BULLET_INACTIVE 0
 
@@ -173,12 +201,12 @@ typedef struct {
     Vector      Position;
     Vector      LastPosition;
     Vector      VelocityFront;
-    Vector      VelocityTotal;
     SVector     Angle;
     short       Radius;
 } Locate;
 
 typedef struct{
+    Vp      Viewport;
     ushort  Size[2];
     ushort  Position[2];
 } PGScreen;
@@ -226,8 +254,9 @@ typedef struct PB{
 
 typedef struct {
     PolyBone*   RootBone;
-    int       FrameCount;
+    short       FrameCount, ActionFrame;
 } AnimeHolster;
+
 
 
 typedef struct {
@@ -239,6 +268,14 @@ typedef struct {
     AnimeHolster*   Fire;
 } WeaponBandolier;
 
+typedef struct{
+    Gfx             (*Reticle);
+    Gfx             (*PickupIcon);
+    short           ReticleSize;
+} HeadUpDisplay;
+
+
+#define     WEAPON_HEAT 0x1
 
 typedef struct {
     short           FiringRate, BulletSpeed;
@@ -249,13 +286,18 @@ typedef struct {
     short           CameraRecoilX, CameraRecoilY;
     short           CameraImpulseX, CameraImpulseY;
     short           MaxImpulseX, MaxImpulseY;
+    unsigned char   ShotsFired, AmmoPerRound, HeatPerRound, AgePerRound;
+    short           ZoomLevel[2];
+    int             WeaponFlags;
     WeaponBandolier Bandolier;
-    Gfx             (*Reticle);  
+    HeadUpDisplay   HUD;
+    
 }   WeaponClass;
 
 typedef struct {
     WeaponClass*    Class;    
     short           Magazine,Ammo;
+    short           Heat, Age;
 }   WeaponEquipment;
 
 typedef struct {
@@ -264,12 +306,79 @@ typedef struct {
     short       Distance, Lifespan;
     short       Damage, InitialSpeed;
     ushort      Weight, RGB;
+    Mtx         FixedMatrix;
 } Projectile;
 
+
+#define RECHARGE_OFF    0
+#define RECHARGE_ON     1
+#define DISPLAY_OFF    0
+#define DISPLAY_ON     1
+#define RECHARGE_TIME   30 * 6 // 6 seconds
+#define RESPAWN_TIME 30 * 3
 typedef struct{
-    short Health,Shield;
+    short           Health, Shield;
+    unsigned char   IFrames, HitFrames;
+    unsigned char   RechargeStatus, DisplayStatus;
 } PlayerHealth;
 
+
+#define PICKUPTYPE_NONE         -1
+#define PICKUPTYPE_OBJECTIVE    0
+#define PICKUPTYPE_WEAPON       1
+#define PICKUPTYPE_AMMO         2
+#define PICKUPTYPE_POWEUP       3
+#define PICKUPTYPE_GRENADE      4
+
+#define POWERUPCLASS_NONE       -1
+#define POWERUPCLASS_HEALTH     0
+#define POWERUPCLASS_SHIELD     1
+#define POWERUPCLASS_CAMO       2
+
+#define WEAPONCLASS_NONE        -1
+#define WEAPONCLASS_ASSAULT     0
+#define WEAPONCLASS_PISTOL      1
+#define WEAPONCLASS_PLASMA      2
+
+#define GRENADECLASS_NONE               -1
+#define GRENADECLASS_FRAGGRENADE        0
+#define GRENADECLASS_PLASMAGRENADE      1
+
+#define OBJECTIVECLASS_NONE     -1
+#define OBJECTIVECLASS_SPAWN    0
+#define OBJECTIVECLASS_FLAG     1
+
+typedef struct {
+    SVector         Position;
+    SVector         Angle;
+    short           PickupType, PickupClass, Ammo, Magazine;
+} StaticPickup;
+
+typedef struct {
+    Locate          Location;
+    short           Ammo, Magazine, Timer;
+    unsigned char   PickupType, PickupClass;
+} DynamicPickup;
+
+typedef struct {
+    StaticPickup*           ObjectList;
+    char*                   Name;
+    
+    uint    Segment4Address;
+    uint    Segment5Address;
+    uint    Segment6Address;
+    
+    uint    Segment4Size;
+    uint    Segment5Size;
+    uint    Segment6Size;
+    
+    uint    DisplayTableAddress;
+    uint    SurfaceTableAddress;
+    uint    GridTableAddress;
+
+    ushort  SurfaceCount, ObjectCount;
+
+} LevelScenario;
 
 /*
 0x1
@@ -292,35 +401,45 @@ typedef struct{
 
 
 
-#define ACTIONJUMP          0x01 //A
-#define ACTIONMELEE         0x02 //B
-#define ACTIONFIRE          0x04 //Z
-#define ACTIONSWAPGUN       0x08 //R+A
-#define ACTIONRELOAD        0x10 //R+B
-#define ACTIONGRENADE       0x20 //R+Z
+#define ACTIONJUMP          0x0001 //A
+#define ACTIONMELEE         0x0002 //B
+#define ACTIONFIRE          0x0004 //Z
+#define ACTIONSWAPGUN       0x0008 //R+A
+#define ACTIONRELOAD        0x0010 //R+B
+#define ACTIONGRENADE       0x0020 //R+Z
+#define ACTIONPICKUP        0x0040 //R+Bbbbbb
 
 
-#define STATUSCROUCH        0x01
-#define STATUSFPS           0x02
-#define STATUSBSTAR         0x04
-#define STATUSINAIR         0x08
-#define STATUSRELOADING     0x10
-#define STATUSSWAPGUN       0x20
-#define STATUSFIRING        0x40
-#define STATUSMELEE         0x80
+#define STATUSCROUCH        0x0001
+#define STATUSFPS           0x0002
+#define STATUSBSTAR         0x0004
+#define STATUSINAIR         0x0008
+#define STATUSRELOADING     0x0010
+#define STATUSSWAPGUN       0x0020
+#define STATUSFIRING        0x0040
+#define STATUSMELEE         0x0080
+#define STATUSZOOM          0x0100
+#define STATUSDEAD          0x0200
 
 typedef struct {
-    short   CurrentTime, MaxTime;
+    ushort  CurrentTime, MaxTime;
+    ushort  ActionFrame, PAD;
 } AnimeTimer;
+
+typedef struct{
+    unsigned char       ButtonTimerA, ButtonTimerB, ButtonTimerCL, ButtonTimerCR;
+    unsigned char       ButtonTimerCU, ButtonTimerCD, ButtonTimerR, ButtonTimerZ;
+} ButtonTimer;
 
 typedef struct{
     short               PlayerIndex, IsCPU;
     Locate              Location;    
     Vector              PushVelocity[3];   
     float               Height;
+    float               ZoomFloat;
     short               HitTri[4];
-    short               JumpTimer, PAD;
-    AnimeTimer          FPAnimeTimer, AnimeTimer;
+    short               JumpTimer, ClosestPickup;
+    AnimeTimer          AnimeTimer, FPAnimeTimer;
     short               PlayerTarget;
     char                ZTarget, SelectedWeapon;
     short               IFrames, FFrames;
@@ -328,6 +447,9 @@ typedef struct{
     PlayerHealth        HealthData;
     AnimeHolster        *Anime, *FPAnime;
     WeaponEquipment     WeaponArray[2];
+    ButtonTimer         ButtonTimes;
+    ButtonTimer         ButtonCooldown;
+    short               RespawnTimer, ZoomLevel;
 } Player;
 
 typedef struct{
@@ -335,7 +457,8 @@ typedef struct{
 } MinMax;
 
 typedef struct{
-    MinMax  FireDistance;
+    MinMax          FireDistance;
+    short           OptimalDistance, PanicThreshold;
     WeaponClass*    PrimaryWeapon;
     WeaponClass*    SecondaryWeapon;
 } Actor;
@@ -362,11 +485,43 @@ typedef struct {
 
 } LevelHeaderStruct;
 
+typedef struct{
+    SVector     Position;
+    short       Angle;
+    short       Gametype, Team;
+} PlayerSpawn;
+
 typedef struct {
     SVector     Position;
     SVector     Angle;
     short       FlagA, FlagB;
 } ObjectClass;
+
+typedef struct {
+    short           Count, Flag;
+    ObjectClass     *ObjectArray;    
+} ObjectHolster;
+
+typedef struct {
+    char*   StringData;
+    uint    StringLength;
+} CharacterData;
+
+
+
+
+typedef struct{
+    CharacterData   OptionData;
+    CharacterData*  ParameterData;
+    uint            ParameterCount;
+} MenuOption;
+
+typedef struct {
+    CharacterData   PanelName;
+    MenuOption*     OptionArray;
+    uint            OptionCount;
+} MenuPanel;
+
 
 #include "../src/main/assets/assets.h"
 #endif

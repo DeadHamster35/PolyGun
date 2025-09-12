@@ -1,6 +1,7 @@
 #include <nusys.h>
 #include <nualsgi_n.h>
 #include "common.h"
+#include "../../../graphic.h"
 static unsigned short ar_T[] = {
 0xDDDD, 0x21DD, 0xDDDD, 0xDDDD, 0xDDDD, 0xDDDD, 0xDDDD, 0xDDDE, 
 0xA98A, 0x98A9, 0x8A98, 0xA98A, 0x98A9, 0x8A98, 0xA98A, 0x98A9, 
@@ -132,13 +133,6 @@ static unsigned short ar_T[] = {
 0x4444, 0x4444, 0x4444, 0x4444, 0x4444, 0x44FF, 0xF777, 0x7777, 
 };
 
-#define	LDIRX	180
-#define	LDIRY	0
-#define	LDIRZ	32
-#define	AMBDIV	1
-Lights1 AR_Lights[]={
-	{{128, 128, 128, 0, 128, 128, 128, 0},{255,255,255,0,255,255,255,0,LDIRX,LDIRY,LDIRZ,0}},
-};
 Gfx Draw_ar_T[] = 
 {
 
@@ -146,12 +140,10 @@ Gfx Draw_ar_T[] =
 	//ar2
 
 	
-    gsSPNumLights(1),
-    gsSPLight((&AR_Lights[0].l[0]),1),
-	gsSPLight((&AR_Lights[0].a),2),
+    
     gsDPSetCycleType(G_CYC_2CYCLE),
     gsSPClearGeometryMode(  12518917),
-	gsSPSetGeometryMode(G_ZBUFFER | G_SHADE | G_CULL_BACK | G_LIGHTING | G_SHADING_SMOOTH),
+	gsSPSetGeometryMode(G_ZBUFFER | G_SHADE | G_LIGHTING | G_CULL_BACK | G_SHADING_SMOOTH),
     gsDPPipeSync(),
 	gsDPSetCombineLERP(TEXEL0, TEXEL1, SHADE, 0, 0, 0, 0, 1, 0, 0, 0, COMBINED, 0, 0, 0, 1),
     //gsDPSetCombineMode(  G_CC_MODULATERGBA, G_CC_MODULATERGBA2),

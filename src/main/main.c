@@ -19,7 +19,7 @@
 #include "pathfinding.h"
 #include "memory.h"
 #include "weapon.h"
-
+#include "FPGraphics.h"
 /* The stage number */
 volatile int stage;
 
@@ -73,7 +73,7 @@ void mainproc(void)
     /* Set the stage number to 0 */
 
     
-    InitNewGame();
+    
     stage = 1;
     while (1)
     {
@@ -199,106 +199,48 @@ void stage01(int pendingGfx)
     updateGame01();
 }
 
-void InitScreenSystem()
-{
-    int Width, Height;
-    Height = SCREEN_HT;
-    Width = SCREEN_WD;
-    if (PlayerCount > 1)
-    {
-        Height = SCREEN_HT * 0.5f;
-    }
-    if (PlayerCount > 2)
-    {
-        Width = SCREEN_WD * 0.5f;
-    }
-    for (int This = 0; This < PlayerCount; This++)
-    {
-        GameCameras[This].Screen.Size[0] = Width;
-        GameCameras[This].Screen.Size[1] = Height;
-    }
-    switch (PlayerCount)
-    {
-        case 1:
-        {
-            GameCameras[0].Screen.Size[0] = 320;
-            GameCameras[0].Screen.Size[1] = 240;
-            GameCameras[0].Screen.Position[0] = 160;
-            GameCameras[0].Screen.Position[1] = 120;
-            break;
-        }
-        case 2:
-        {
-            GameCameras[0].Screen.Position[0] = SCREEN_WD * 0.5f;
-            GameCameras[0].Screen.Position[1] = SCREEN_HT * 0.25f;
-            GameCameras[1].Screen.Position[0] = SCREEN_WD * 0.5f;
-            GameCameras[1].Screen.Position[1] = SCREEN_HT * 0.75f;
-            break;
-        }
-        case 3:
-        {
-            GameCameras[0].Screen.Size[0] = 320;
-            GameCameras[0].Screen.Size[1] = 120;
-            GameCameras[1].Screen.Size[0] = 160;
-            GameCameras[1].Screen.Size[1] = 120;
-            GameCameras[2].Screen.Size[0] = 160;
-            GameCameras[2].Screen.Size[1] = 120;
+/*
 
-            GameCameras[0].Screen.Position[0] = 160;
-            GameCameras[0].Screen.Position[1] = 60;
-            GameCameras[1].Screen.Position[0] = 80;
-            GameCameras[1].Screen.Position[1] = 180;
-            GameCameras[2].Screen.Position[0] = 240;
-            GameCameras[2].Screen.Position[1] = 180;
-            break;
-        }
-        case 4:
-        {
-            GameCameras[0].Screen.Size[0] = 160;
-            GameCameras[0].Screen.Size[1] = 120;
-            GameCameras[1].Screen.Size[0] = 160;
-            GameCameras[1].Screen.Size[1] = 120;
-            GameCameras[2].Screen.Size[0] = 160;
-            GameCameras[2].Screen.Size[1] = 120;
-            GameCameras[3].Screen.Size[0] = 160;
-            GameCameras[3].Screen.Size[1] = 120;
 
-            GameCameras[0].Screen.Position[0] = 80;
-            GameCameras[0].Screen.Position[1] = 60;
-            GameCameras[1].Screen.Position[0] = 240;
-            GameCameras[1].Screen.Position[1] = 60;
-            GameCameras[2].Screen.Position[0] = 80;
-            GameCameras[2].Screen.Position[1] = 180;
-            GameCameras[3].Screen.Position[0] = 80;
-            GameCameras[3].Screen.Position[1] = 180;
-            break;
-        }
-    }
+    //outdated code systems. deprecated. 
+    //collision data is now precompiled
+    
+    BuildCollisionBuffer(TableSurface[LevelIndex]);
+    SetSegment(8,(uint)&CollisionBuffer);
 
-}
+    //Build Pathfinding Data
+    BuildNavMesh();
+    
+    
+*/
 
+extern LevelScenario RiverBed_Scenario;
+extern LevelScenario BlockTest_Scenario;
+extern LevelScenario BeaverCreek_Scenario;
 void InitNewGame()
 {
     RenderEnable = 0;
+    //PlayerCount = 1;
+    BotCount = 4;
+    CreateScreenCoords();
+    LevelIndex = 1;
+    LoadScenario((LevelScenario*)(uint)&BeaverCreek_Scenario);   
 
-    PlayerCount = 1;
-    BotCount = 3;
-    
     InitWeaponClasses();
     InitActors();
     initAllPlayers();
-    InitScreenSystem();
+    initScreenSystem();
     
     initProjectiles();
-
-    LevelIndex = 1;
-    LoadHeader();
+ 
     LoadLevelData();
+    CollisionBuffer = (CompactCollision *)(GetRealAddress(0x06000000 | LoadedScenario.SurfaceTableAddress));
+    GridHolster = (CollisionGridHolster *)(GetRealAddress(0x06000000 | LoadedScenario.GridTableAddress));
+    GridArray = (ushort *)(GetRealAddress(0x06000000 | LoadedScenario.GridTableAddress) + sizeof(CollisionGridHolster));
+
     
-    CollisionBuffer = (CompactCollision *)(GetRealAddress(TableSurface[LevelIndex]));
-    GridHolster = (CollisionGridHolster *)(GetRealAddress(TableGrid[LevelIndex]));
-    GridArray = (ushort *)(GetRealAddress(TableGrid[LevelIndex]) + sizeof(CollisionGridHolster));
-    CollisionCount = SurfaceCount[LevelIndex];
+    
+    CollisionCount = LoadedScenario.SurfaceCount;
     InitNavArray();
 
     GameSequence = LEVELSEQUENCE;

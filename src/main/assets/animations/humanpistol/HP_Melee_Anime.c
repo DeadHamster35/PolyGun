@@ -901,7 +901,8 @@ static PolyBone BodyBone_Bone =
 AnimeHolster HP_Melee =
 {
 	.RootBone = (PolyBone*)&BodyBone_Bone,
-	.FrameCount = 61
+	.FrameCount = 61,
+    .ActionFrame = 0
 };
 
 

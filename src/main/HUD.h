@@ -11,3 +11,5 @@ extern ushort HealthTex[32*32];
 extern ushort ShieldTex[1024];
 extern ushort ShieldPAL[16];
 
+void DrawText(int X, int Y, char* Print, float Scale);
+

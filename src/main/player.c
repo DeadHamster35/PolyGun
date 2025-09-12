@@ -9,6 +9,7 @@
 #include "weapon.h"
 #include "pathfinding.h"
 #include "actors.h"
+#include "levels.h"
 
 Player GamePlayers[16];
 PGCamera GameCameras[4];
@@ -16,28 +17,23 @@ BotStruct GameBots[16];
 
 extern void GetPlayerTargets();
 
+extern int GetSpawnPoint(int PlayerIndex);
+
 short PlayerCount, BotCount;
 float UpDirection[] = { 0.0f, 0.0f, 1.0f};
 float LookDirection[] = { 0.0f, 1.0f, 0.0f};
 
 
-
-short Spawn[][3] = 
-{
-    { -1000, -750, -125},
-    { 1000, -750, -125},
-    { 1035, 2070, 5},
-    { 658, 341, 30},
-    { 598, 341, 30},
-};
 void initPlayer(int ThisPlayer)
 {
     Player* LocalPlayer = (Player*)&GamePlayers[ThisPlayer];
     BotStruct* LocalBot = (BotStruct*)&GameBots[ThisPlayer];
+
+    short SpawnIndex = GetSpawnPoint(ThisPlayer);
     for (int ThisVector = 0; ThisVector < 3; ThisVector++)
     {
-        LocalPlayer->Location.Position[ThisVector] = Spawn[ThisPlayer][ThisVector];
-        LocalPlayer->Location.LastPosition[ThisVector] = Spawn[ThisPlayer][ThisVector];
+        LocalPlayer->Location.Position[ThisVector] = SpawnPoints[SpawnIndex].Position[ThisVector];
+        LocalPlayer->Location.LastPosition[ThisVector] = SpawnPoints[SpawnIndex].Position[ThisVector];
         LocalPlayer->Location.Angle[ThisVector] = 0;
         LocalPlayer->Location.VelocityFront[ThisVector] = 0.0f;
         LocalPlayer->HitTri[ThisVector] = -1;
@@ -49,19 +45,19 @@ void initPlayer(int ThisPlayer)
     LocalPlayer->Location.Radius = 10.0f;
     
     LocalPlayer->Height = 35.0f;
-    LocalPlayer->HealthData.Shield = 100;
-    LocalPlayer->HealthData.Health = 100;
+    LocalPlayer->ZoomFloat = 1.0f;
+    LocalPlayer->HealthData.Shield = MAXSHIELD;
+    LocalPlayer->HealthData.Health = MAXHEALTH;
 
     LocalPlayer->StatusBits = 0;
     LocalPlayer->ActionBits = 0;
     LocalPlayer->StatusBits |= STATUSINAIR;
     if (LocalPlayer->IsCPU == 1)
     {
-        LocalPlayer->HealthData.Health = LocalBot->Difficulty;
         LocalBot->CurrentPathIndex = -1;        
         LocalBot->TargetPlayer = 0;
         //LocalPlayer->StatusBits |= STATUSFPS;
-        LocalBot->ActorData = (Actor*)&Elite;
+        LocalBot->ActorData = (Actor*)&MPBot;
         
         LocalPlayer->WeaponArray[0].Class = LocalBot->ActorData->PrimaryWeapon;
         LocalPlayer->WeaponArray[1].Class = LocalBot->ActorData->SecondaryWeapon;
@@ -69,7 +65,6 @@ void initPlayer(int ThisPlayer)
     }
     else
     {
-        LocalPlayer->HealthData.Health = 100;
         LocalPlayer->StatusBits |= STATUSFPS;
         LocalPlayer->WeaponArray[0].Class = (WeaponClass*)&AssaultRifle;    
         LocalPlayer->WeaponArray[1].Class = (WeaponClass*)&Pistol;
@@ -82,10 +77,130 @@ void initPlayer(int ThisPlayer)
     LocalPlayer->FPAnime = LocalPlayer->WeaponArray[0].Class->Bandolier.Idle;
     LocalPlayer->FPAnimeTimer.MaxTime = LocalPlayer->WeaponArray[0].Class->Bandolier.Idle->FrameCount;
     LocalPlayer->FPAnimeTimer.CurrentTime = 0;
+    LocalPlayer->FPAnimeTimer.ActionFrame = 0;
     
     ResetNavPath(ThisPlayer);
 }
 
+void DamagePlayer(int PlayerIndex, int Damage)
+{
+    Player* LocalPlayer = (Player*)&GamePlayers[PlayerIndex];
+    
+    if (LocalPlayer->StatusBits & STATUSDEAD)
+    {
+        return;
+    }
+
+    //dezoom player when hit
+    LocalPlayer->StatusBits &= ~STATUSZOOM;
+    LocalPlayer->ZoomLevel = 0;
+    LocalPlayer->ZoomFloat = 1.0f;
+
+
+    //Full bleedthrough; damage falls through shield into health.
+    int BleedThrough = Damage - LocalPlayer->HealthData.Shield;
+    if (LocalPlayer->HealthData.Shield > 0)
+    {
+        LocalPlayer->HealthData.Shield -= Damage;
+    }
+    if (BleedThrough > 0)
+    {
+        LocalPlayer->HealthData.Health -= BleedThrough;
+    }
+
+    LocalPlayer->HealthData.HitFrames = RECHARGE_TIME;
+    LocalPlayer->HealthData.RechargeStatus = RECHARGE_OFF;
+    
+
+    if (LocalPlayer->HealthData.Health <= 0)
+    {
+        LocalPlayer->StatusBits |= STATUSDEAD;
+        LocalPlayer->RespawnTimer = RESPAWN_TIME;
+        LocalPlayer->Location.Angle[0] = DEG1 * 90;
+        GameBots[PlayerIndex].Difficulty++;
+    }
+}
+
+void initScreenSystem()
+{
+    switch (PlayerCount)
+    {
+        case 1:
+        {
+            GameCameras[0].Screen.Size[0] = 320;
+            GameCameras[0].Screen.Size[1] = 240;
+            GameCameras[0].Screen.Position[0] = 160;
+            GameCameras[0].Screen.Position[1] = 120;
+            break;
+        }
+        case 2:
+        {
+            GameCameras[0].Screen.Size[0] = 320;
+            GameCameras[0].Screen.Size[1] = 120;
+            GameCameras[1].Screen.Size[0] = 320;
+            GameCameras[1].Screen.Size[1] = 120;
+
+            GameCameras[0].Screen.Position[0] = 160;
+            GameCameras[0].Screen.Position[1] = 60;
+            GameCameras[1].Screen.Position[0] = 160;
+            GameCameras[1].Screen.Position[1] = 180;
+            break;
+        }
+        case 3:
+        {
+            GameCameras[0].Screen.Size[0] = 320;
+            GameCameras[0].Screen.Size[1] = 120;
+            GameCameras[1].Screen.Size[0] = 160;
+            GameCameras[1].Screen.Size[1] = 120;
+            GameCameras[2].Screen.Size[0] = 160;
+            GameCameras[2].Screen.Size[1] = 120;
+
+            GameCameras[0].Screen.Position[0] = 160;
+            GameCameras[0].Screen.Position[1] = 60;
+            GameCameras[1].Screen.Position[0] = 80;
+            GameCameras[1].Screen.Position[1] = 180;
+            GameCameras[2].Screen.Position[0] = 240;
+            GameCameras[2].Screen.Position[1] = 180;
+            break;
+        }
+        case 4:
+        {
+            GameCameras[0].Screen.Size[0] = 160;
+            GameCameras[0].Screen.Size[1] = 120;
+            GameCameras[1].Screen.Size[0] = 160;
+            GameCameras[1].Screen.Size[1] = 120;
+            GameCameras[2].Screen.Size[0] = 160;
+            GameCameras[2].Screen.Size[1] = 120;
+            GameCameras[3].Screen.Size[0] = 160;
+            GameCameras[3].Screen.Size[1] = 120;
+
+            GameCameras[0].Screen.Position[0] = 80;
+            GameCameras[0].Screen.Position[1] = 60;
+            GameCameras[1].Screen.Position[0] = 240;
+            GameCameras[1].Screen.Position[1] = 60;
+            GameCameras[2].Screen.Position[0] = 80;
+            GameCameras[2].Screen.Position[1] = 180;
+            GameCameras[3].Screen.Position[0] = 240;
+            GameCameras[3].Screen.Position[1] = 180;
+
+            
+
+            
+            break;
+        }
+    }
+
+
+    for (int ThisPlayer = 0; ThisPlayer < PlayerCount; ThisPlayer++)
+    {
+        GameCameras[ThisPlayer].Screen.Viewport.vp.vtrans[2] = G_MAXZ / 2;
+        GameCameras[ThisPlayer].Screen.Viewport.vp.vscale[2] = G_MAXZ / 2;
+
+        GameCameras[ThisPlayer].Screen.Viewport.vp.vtrans[3] = 0;
+        GameCameras[ThisPlayer].Screen.Viewport.vp.vscale[3] = 0;
+    }
+
+}
 void initCamera(int ThisPlayer)
 {
     PGCamera* LocalCamera = (PGCamera*)&GameCameras[ThisPlayer];
@@ -103,14 +218,9 @@ void initCamera(int ThisPlayer)
     
     LocalCamera->LookAt[1] = 100.0f;
     LocalCamera->Location.Radius = 10.0f;
-    //LocalCamera->FOVY = 45;
     LocalCamera->FOVY = 70;
     LocalCamera->Near = 2.0f;
     LocalCamera->Far = 16000.0f;
-    LocalCamera->Screen.Position[0] = 160;
-    LocalCamera->Screen.Position[1] = 120;
-    LocalCamera->Screen.Size[0] = 320;
-    LocalCamera->Screen.Size[1] = 240;
 }
 
 void initAllPlayers()
@@ -120,14 +230,12 @@ void initAllPlayers()
         GamePlayers[ThisPlayer].IsCPU = 0;
         initPlayer(ThisPlayer);
         initCamera(ThisPlayer);
-        
     }
     for (int ThisPlayer = PlayerCount; ThisPlayer < PlayerCount + BotCount; ThisPlayer++)
     {
         GamePlayers[ThisPlayer].IsCPU = 1;
         GameBots[ThisPlayer].Difficulty = 1;
         initPlayer(ThisPlayer);
-        //initCamera(ThisPlayer);
     }
 }
 
@@ -136,20 +244,87 @@ void initAllPlayers()
 void DebugControl(int Index)
 {
     NUContData* LocalPad = (NUContData*)&contdata[Index];
-    if (LocalPad->trigger & BTN_DDOWN)
-    {
-        
-        
-    }
 
     if (LocalPad->trigger & BTN_DLEFT)
     {
         GamePlayers[Index].StatusBits ^= STATUSFPS;
     }
 
-    if (LocalPad->trigger & BTN_DUP)
+}
+
+
+
+int GetSpawnPoint(int PlayerIndex)
+{
+    //Check each spawn point against each enemy player and get furthest distance;
+
+    Vector Source, Target;
+    short BestIndex, HitIndex;
+    float BestDistance, ClosestDistance;
+    
+    
+    BestDistance = -1.0f;
+    BestIndex = -1;
+    for (int ThisIndex = 0; ThisIndex < TotalSpawnPoints; ThisIndex++)
+    {
+        Source[0] = (float)SpawnPoints[ThisIndex].Position[0];
+        Source[1] = (float)SpawnPoints[ThisIndex].Position[1];
+        Source[2] = (float)SpawnPoints[ThisIndex].Position[2];
+        HitIndex = 0;
+        ClosestDistance = -1.0f;
+        for (int ThisPlayer = 0; ThisPlayer < PlayerCount + BotCount; ThisPlayer++)
+        {
+            if (ThisPlayer == PlayerIndex)
+            {
+                continue;
+            }
+            Target[0] = GamePlayers[ThisPlayer].Location.Position[0];
+            Target[1] = GamePlayers[ThisPlayer].Location.Position[1];
+            Target[2] = GamePlayers[ThisPlayer].Location.Position[2];
+            float CheckDistance = GetDistance(Target, Source);
+            if (ClosestDistance < CheckDistance)
+            {
+                ClosestDistance = CheckDistance;
+                HitIndex = 1;
+            }
+
+        }
+        
+        if (HitIndex && (ClosestDistance > BestDistance))
+        {
+            BestDistance = ClosestDistance;
+            BestIndex = ThisIndex;
+        }
+
+    }
+    if (BestIndex == -1)
+    {
+        BestIndex = 0;
+    }
+    return BestIndex;
+}
+    
+
+void ActionPlayerStatus(int PlayerIndex)
+{
+    Player* LocalPlayer = (Player*)&GamePlayers[PlayerIndex];
+    if (LocalPlayer->StatusBits & STATUSMELEE)
     {
         
+        int PlayerHit;
+        float Distance;
+        PlayerHit = CheckViewCone(&Distance, PlayerIndex, 50.0f);
+        if (PlayerHit != -1)
+        {
+            if (Distance < 1.0f)
+            {
+                DamagePlayer(PlayerHit, 75);
+            }
+        }
+    }
+    if (LocalPlayer->StatusBits & STATUSRELOADING)
+    {   
+        LoadWeaponAmmo(PlayerIndex);
     }
 }
 
@@ -162,10 +337,10 @@ void ResetPlayerStatus(int PlayerIndex)
     if (LocalPlayer->StatusBits & STATUSRELOADING)
     {
         LocalPlayer->StatusBits &= ~STATUSRELOADING;
-        LoadWeaponAmmo(PlayerIndex);
-        
+
         LocalPlayer->FPAnime = LocalClass->Bandolier.Idle;
         LocalPlayer->FPAnimeTimer.CurrentTime = 0;
+        LocalPlayer->FPAnimeTimer.ActionFrame = LocalClass->Bandolier.Idle->ActionFrame;
         LocalPlayer->FPAnimeTimer.MaxTime = LocalClass->Bandolier.Idle->FrameCount;
         StatusReset = true;
     }
@@ -175,6 +350,7 @@ void ResetPlayerStatus(int PlayerIndex)
         
         LocalPlayer->FPAnime = LocalClass->Bandolier.Idle;
         LocalPlayer->FPAnimeTimer.CurrentTime = 0;
+        LocalPlayer->FPAnimeTimer.ActionFrame = LocalClass->Bandolier.Idle->ActionFrame;
         LocalPlayer->FPAnimeTimer.MaxTime = LocalClass->Bandolier.Idle->FrameCount;
         StatusReset = true;
     }
@@ -184,9 +360,153 @@ void ResetPlayerStatus(int PlayerIndex)
     {
         LocalPlayer->FPAnime = LocalClass->Bandolier.Idle;
         LocalPlayer->FPAnimeTimer.CurrentTime = 0;
+        LocalPlayer->FPAnimeTimer.ActionFrame = LocalClass->Bandolier.Idle->ActionFrame;
         LocalPlayer->FPAnimeTimer.MaxTime = LocalClass->Bandolier.Idle->FrameCount;
     }
     //LocalPlayer->StatusBits &= ~STATUSSWAPGUN;
+
+}
+
+void GetButtonTimers(int PlayerIndex)
+{
+    Player* LocalPlayer =       (Player*)&GamePlayers[PlayerIndex];
+    NUContData* LocalPad = (NUContData*)&contdata[PlayerIndex];
+
+
+    if (LocalPlayer->ButtonCooldown.ButtonTimerCL > 0)
+    {
+        LocalPlayer->ButtonCooldown.ButtonTimerCL--;
+    }
+    else
+    {
+        if (LocalPad->button & BTN_CLEFT)
+        {
+            LocalPlayer->ButtonTimes.ButtonTimerCL++;
+        }
+        else
+        {
+            LocalPlayer->ButtonTimes.ButtonTimerCL = 0;
+        }
+    }
+
+
+    if (LocalPlayer->ButtonCooldown.ButtonTimerCR > 0)
+    {
+        LocalPlayer->ButtonCooldown.ButtonTimerCR--;
+    }
+    else
+    {
+        if (LocalPad->button & BTN_CRIGHT)
+        {
+            LocalPlayer->ButtonTimes.ButtonTimerCR++;
+        }
+        else
+        {
+            LocalPlayer->ButtonTimes.ButtonTimerCR = 0;
+        }
+    }
+    
+
+    if (LocalPlayer->ButtonCooldown.ButtonTimerCU > 0)
+    {
+        LocalPlayer->ButtonCooldown.ButtonTimerCU--;
+    }
+    else
+    {
+        if (LocalPad->button & BTN_CUP)
+        {
+            LocalPlayer->ButtonTimes.ButtonTimerCU++;
+        }
+        else
+        {
+            LocalPlayer->ButtonTimes.ButtonTimerCU = 0;
+        }
+    }
+
+
+    if (LocalPlayer->ButtonCooldown.ButtonTimerCD > 0)
+    {
+        LocalPlayer->ButtonCooldown.ButtonTimerCD--;
+    }
+    else
+        {
+        if (LocalPad->button & BTN_CDOWN)
+        {
+            LocalPlayer->ButtonTimes.ButtonTimerCD++;
+        }
+        else
+        {
+            LocalPlayer->ButtonTimes.ButtonTimerCD = 0;
+        }
+    }
+
+
+    if (LocalPlayer->ButtonCooldown.ButtonTimerA > 0)
+    {
+        LocalPlayer->ButtonCooldown.ButtonTimerA--;
+    }
+    else
+        {
+        if (LocalPad->button & BTN_A)
+        {
+            LocalPlayer->ButtonTimes.ButtonTimerA++;
+        }
+        else
+        {
+            LocalPlayer->ButtonTimes.ButtonTimerA = 0;
+        }
+    }
+
+
+    if (LocalPlayer->ButtonCooldown.ButtonTimerB > 0)
+    {
+        LocalPlayer->ButtonCooldown.ButtonTimerB--;
+    }
+    else
+        {
+        if (LocalPad->button & BTN_B)
+        {
+            LocalPlayer->ButtonTimes.ButtonTimerB++;
+        }
+        else
+        {
+            LocalPlayer->ButtonTimes.ButtonTimerB = 0;
+        }
+    }
+
+
+    if (LocalPlayer->ButtonCooldown.ButtonTimerR > 0)
+    {
+        LocalPlayer->ButtonCooldown.ButtonTimerR--;
+    }
+    else
+        {
+        if (LocalPad->button & BTN_R)
+        {
+            LocalPlayer->ButtonTimes.ButtonTimerR++;
+        }
+        else
+        {
+            LocalPlayer->ButtonTimes.ButtonTimerR = 0;
+        }
+    }
+
+
+    if (LocalPlayer->ButtonCooldown.ButtonTimerZ > 0)
+    {
+        LocalPlayer->ButtonCooldown.ButtonTimerZ--;
+    }
+    else
+    {
+        if (LocalPad->button & BTN_Z)
+        {
+            LocalPlayer->ButtonTimes.ButtonTimerZ++;
+        }
+        else
+        {
+            LocalPlayer->ButtonTimes.ButtonTimerZ = 0;
+        }
+    }
 
 }
 
@@ -199,19 +519,25 @@ void UpdatePlayerControls()
     {
         DebugControl(ThisPlayer);
 
-        
+        GetButtonTimers(ThisPlayer);
         Player* LocalPlayer =       (Player*)&GamePlayers[ThisPlayer];
+        
 
         if (LocalPlayer->IsCPU)
         {
             //Don't run controller for CPU bots
-            return;
+            continue;
         }
+
+
+        WeaponClass* LocalWeapon = LocalPlayer->WeaponArray[LocalPlayer->SelectedWeapon].Class;
+        PGCamera* LocalCamera =     (PGCamera*)&GameCameras[ThisPlayer];
+
+        
 
         //get z-targets
         GetPlayerTargets();
 
-        PGCamera* LocalCamera =     (PGCamera*)&GameCameras[ThisPlayer];
 
         NUContData* LocalPad = (NUContData*)&contdata[ThisPlayer];
         NUContData* P3 = (NUContData*)&contdata[2];
@@ -221,13 +547,12 @@ void UpdatePlayerControls()
 
         if ((LocalPad->stick_x > 5) || (LocalPad->stick_x < -5))
         {
-            XSpeed = (float)LocalPad->stick_x * -0.1f;
+            XSpeed = (float)LocalPad->stick_x * -0.01f;
         }
         if ((LocalPad->stick_y > 5) || (LocalPad->stick_y < -5))
         {
-            YSpeed = (float)LocalPad->stick_y * 0.1f;
+            YSpeed = (float)LocalPad->stick_y * 0.01f;
         }
-        
         /* P3 Analog Controlss
         if ((P3->stick_x > 5) || (P3->stick_x < -5))
         {
@@ -258,44 +583,6 @@ void UpdatePlayerControls()
         }
         */
 
-        if (LocalPlayer->ZTarget > 0)
-        {
-            if (LocalPad->button & BTN_CLEFT)
-            {
-                LocalCamera->Location.Angle[2] += DEGF * 1.5f;
-            }
-            if (LocalPad->button & BTN_CRIGHT)
-            {
-                LocalCamera->Location.Angle[2] -= DEGF * 1.5f;
-            }
-        }
-        else
-        {
-            if (LocalPad->button & BTN_CLEFT)
-            {
-                LocalCamera->Location.Angle[2] += DEGF * 2.5f;
-            }
-            if (LocalPad->button & BTN_CRIGHT)
-            {
-                LocalCamera->Location.Angle[2] -= DEGF * 2.5f;
-            }
-        }
-        
-
-        if (LocalPad->button & BTN_CUP)
-        {
-            if (LocalCamera->Location.Angle[0] < MAXLOOK * DEG1)
-            {
-                LocalCamera->Location.Angle[0] += (short)(DEGF * 1.5f);
-            }
-        }
-        if (LocalPad->button & BTN_CDOWN)
-        {
-            if (LocalCamera->Location.Angle[0] > -(MAXLOOK * DEG1))
-            {
-                LocalCamera->Location.Angle[0] -= (short)(DEGF * 1.5f);
-            }
-        }
 
 
         //Firing Impulse, Firing Frames, Invincibility Frames
@@ -325,117 +612,206 @@ void UpdatePlayerControls()
             LocalPlayer->JumpTimer -= 1;
         }
         
+        
+        if (LocalPlayer->FPAnimeTimer.CurrentTime == LocalPlayer->FPAnimeTimer.ActionFrame)
+        {
+            ActionPlayerStatus(ThisPlayer);
+        }
 
         LocalPlayer->FPAnimeTimer.CurrentTime++;
+
         if (LocalPlayer->FPAnimeTimer.CurrentTime >= LocalPlayer->FPAnimeTimer.MaxTime)
         {
             ResetPlayerStatus(ThisPlayer);
         }
 
         
-        //Check R Toggle
-        if (LocalPad->button & BTN_R)
+        if (LocalPlayer->RespawnTimer == -1)
         {
-            //Check for SwapWeapon
-            if (LocalPad->trigger & BTN_A) 
+            //Only if Player is Not-Yet-Dead
+            //Check R Toggle
+            if (LocalPad->button & BTN_R)
             {
-                LocalPlayer->ActionBits |= ACTIONSWAPGUN;
-            }
-
-            //Check for Reload
-            if (LocalPad->trigger & BTN_B) 
-            {
-                LocalPlayer->ActionBits |= ACTIONRELOAD;
-            }
-        }
-        else
-        {
-            //Check for Jump
-            if (LocalPlayer->JumpTimer > 0)
-            {
+                //Check for SwapWeapon
                 if (LocalPad->trigger & BTN_A) 
                 {
-                    //JUMP
-                    LocalPlayer->ActionBits |= ACTIONJUMP;
-                    LocalPlayer->JumpTimer = -1;
+                    LocalPlayer->ActionBits |= ACTIONSWAPGUN;
+                }
+
+                //Check for Reload
+                if (LocalPad->trigger & BTN_B) 
+                {
+                    LocalPlayer->ActionBits |= ACTIONRELOAD;
+                }
+                if (LocalPad->button & BTN_B)
+                {
+                    if (LocalPlayer->ButtonTimes.ButtonTimerB > 10)
+                    {
+                        LocalPlayer->ButtonTimes.ButtonTimerB = 0;
+                        LocalPlayer->ButtonCooldown.ButtonTimerB = 10;
+                        LocalPlayer->ActionBits &= ~ACTIONRELOAD;
+                        LocalPlayer->ActionBits |= ACTIONPICKUP;
+                    }
+                }
+                
+
+                
+                if (LocalPad->trigger & BTN_CUP)
+                {
+                    LocalPlayer->ZoomLevel++;
+                    if (LocalPlayer->ZoomLevel > 2)
+                    {
+                        LocalPlayer->ZoomLevel = 0;                        
+                        LocalPlayer->ZoomFloat = 1.0f;
+                        LocalPlayer->StatusBits &= ~STATUSZOOM;
+                    }
+                    else
+                    {
+                        if (LocalWeapon->ZoomLevel[LocalPlayer->ZoomLevel-1] == -1)
+                        {
+                            LocalPlayer->ZoomLevel = 0;
+                            LocalPlayer->ZoomFloat = 1.0f;
+                            LocalPlayer->StatusBits &= ~STATUSZOOM;
+                        }
+                        else
+                        {
+                            LocalPlayer->ZoomFloat = (float)(LocalWeapon->ZoomLevel[LocalPlayer->ZoomLevel-1] * 0.1f);
+                            LocalPlayer->StatusBits |= STATUSZOOM;
+                        }
+                    }
+                    
+
+                }
+
+                
+
+
+            }
+            else
+            {
+                //Check for Jump
+                if (LocalPlayer->JumpTimer > 0)
+                {
+                    if (LocalPad->trigger & BTN_A) 
+                    {
+                        //JUMP
+                        LocalPlayer->ActionBits |= ACTIONJUMP;
+                        LocalPlayer->JumpTimer = -1;
+                    }
+                }
+                //Check for Fire
+                if (LocalPad->button & BTN_Z)
+                {
+                    LocalPlayer->ActionBits |= ACTIONFIRE;
+                }
+                
+                //Check for Melee
+                if (LocalPad->trigger & BTN_B)
+                {
+                    LocalPlayer->ActionBits |= ACTIONMELEE;
+                }
+
+
+
+                    
+                if (LocalPlayer->ZTarget > 0)
+                {
+                    if (LocalPad->button & BTN_CLEFT)
+                    {
+                        LocalCamera->Location.Angle[2] += DEGF * 1.5f / LocalPlayer->ZoomFloat;
+                    }
+                    if (LocalPad->button & BTN_CRIGHT)
+                    {
+                        LocalCamera->Location.Angle[2] -= DEGF * 1.5f / LocalPlayer->ZoomFloat;
+                    }
+                }
+                else
+                {
+                    if (LocalPad->button & BTN_CLEFT)
+                    {
+                        LocalCamera->Location.Angle[2] += (short)(DEGF * 2.5f / LocalPlayer->ZoomFloat);
+                    }
+                    if (LocalPad->button & BTN_CRIGHT)
+                    {
+                        LocalCamera->Location.Angle[2] -= (short)(DEGF * 2.5f / LocalPlayer->ZoomFloat);
+                    }
+                }
+                
+
+                if (LocalPad->button & BTN_CUP)
+                {
+                    if (LocalCamera->Location.Angle[0] < MAXLOOK * DEG1)
+                    {
+                        LocalCamera->Location.Angle[0] += (short)(DEGF * 2.0f / LocalPlayer->ZoomFloat);
+                    }
+                }
+                if (LocalPad->button & BTN_CDOWN)
+                {
+                    if (LocalCamera->Location.Angle[0] > -(MAXLOOK * DEG1))
+                    {
+                        LocalCamera->Location.Angle[0] -= (short)(DEGF * 2.0f / LocalPlayer->ZoomFloat);
+                    }
                 }
             }
-            //Check for Fire
-            if (LocalPad->button & BTN_Z)
-            {
-                LocalPlayer->ActionBits |= ACTIONFIRE;
-            }
             
-            //Check for Melee
-            if (LocalPad->trigger & BTN_B)
+
+
+            //Apply a new look-at vector infront of the current camera
+            //Rotate this vector based on the camera angles.
+            //Apply all movement towards this new vector.       
+            
+            LocalCamera->LookAt[0] = 0;
+            LocalCamera->LookAt[1] = 100;
+            LocalCamera->LookAt[2] = 0;
+
+            AlignXVector(LocalCamera->LookAt, LocalCamera->Location.Angle[0]);
+            AlignYVector(LocalCamera->LookAt, LocalCamera->Location.Angle[1]);
+            AlignZVector(LocalCamera->LookAt, LocalCamera->Location.Angle[2]);
+
+            LocalCamera->LookAt[0] += LocalCamera->Location.Position[0];
+            LocalCamera->LookAt[1] += LocalCamera->Location.Position[1];
+            LocalCamera->LookAt[2] += LocalCamera->Location.Position[2];
+            
+            TransformMatrix(CameraMatrix[ThisPlayer],LocalCamera->Location.Position, LocalCamera->LookAt, LocalCamera->UpVector);
+
+
+            LocalPlayer->Location.VelocityFront[0] += CameraMatrix[ThisPlayer][0][2] * YSpeed;
+            LocalPlayer->Location.VelocityFront[1] += CameraMatrix[ThisPlayer][1][2] * YSpeed;
+
+            LocalPlayer->Location.VelocityFront[0] += CameraMatrix[ThisPlayer][0][0] * XSpeed;
+            LocalPlayer->Location.VelocityFront[1] += CameraMatrix[ThisPlayer][1][0] * XSpeed;
+
+            
+
+            
+
+
+            float TotalSpeed = sqrtf(        
+                LocalPlayer->Location.VelocityFront[0] * LocalPlayer->Location.VelocityFront[0] +
+                LocalPlayer->Location.VelocityFront[1] * LocalPlayer->Location.VelocityFront[1]
+            );
+            
+
+            //If the player has accelerated beyond maximum speed, reduce by the fractional amount.
+
+            if (TotalSpeed > (MAXSPEED))
             {
-                LocalPlayer->ActionBits |= ACTIONMELEE;
+                Nerf = ((MAXSPEED) / (TotalSpeed));
+            
+                LocalPlayer->Location.VelocityFront[0] *= Nerf;
+                LocalPlayer->Location.VelocityFront[1] *= Nerf;
+            }
+
+            if (TotalSpeed >= 0.1f)
+            {
+                LocalPlayer->Location.Angle[2] = LocalCamera->Location.Angle[2];
             }
         }
         
 
 
 
-        //Apply a new look-at vector infront of the current camera
-        //Rotate this vector based on the camera angles.
-        //Apply all movement towards this new vector.       
         
-        LocalCamera->LookAt[0] = 0;
-        LocalCamera->LookAt[1] = 100;
-        LocalCamera->LookAt[2] = 0;
-
-        AlignXVector(LocalCamera->LookAt, LocalCamera->Location.Angle[0]);
-        AlignZVector(LocalCamera->LookAt, LocalCamera->Location.Angle[2]);
-
-        LocalCamera->LookAt[0] += LocalCamera->Location.Position[0];
-        LocalCamera->LookAt[1] += LocalCamera->Location.Position[1];
-        LocalCamera->LookAt[2] += LocalCamera->Location.Position[2];
-        
-        TransformMatrix(CameraMatrix[ThisPlayer],LocalCamera->Location.Position, LocalCamera->LookAt, LocalCamera->UpVector);
-
-
-        LocalPlayer->Location.VelocityFront[0] += CameraMatrix[ThisPlayer][0][2] * YSpeed;
-        LocalPlayer->Location.VelocityFront[1] += CameraMatrix[ThisPlayer][1][2] * YSpeed;
-
-        LocalPlayer->Location.VelocityFront[0] += CameraMatrix[ThisPlayer][0][0] * XSpeed;
-        LocalPlayer->Location.VelocityFront[1] += CameraMatrix[ThisPlayer][1][0] * XSpeed;
-
-        
-
-        
-
-        LocalPlayer->Location.VelocityTotal[0] = sqrtf(
-            LocalPlayer->Location.VelocityFront[0] * LocalPlayer->Location.VelocityFront[0]
-        );
-
-        LocalPlayer->Location.VelocityTotal[1] = sqrtf(            
-            LocalPlayer->Location.VelocityFront[1] * LocalPlayer->Location.VelocityFront[1]
-        );
-
-        float TotalSpeed = sqrtf(        
-            LocalPlayer->Location.VelocityTotal[0] * LocalPlayer->Location.VelocityTotal[0] +
-            LocalPlayer->Location.VelocityTotal[1] * LocalPlayer->Location.VelocityTotal[1]
-        );
-        
-
-        //If the player has accelerated beyond maximum speed, reduce by the fractional amount.
-
-        if (TotalSpeed > (MAXSPEED))
-        {
-            Nerf = ((MAXSPEED) / (TotalSpeed));
-        
-            LocalPlayer->Location.VelocityFront[0] *= Nerf;
-            LocalPlayer->Location.VelocityFront[1] *= Nerf;
-        }
-
-        if (TotalSpeed >= 0.1f)
-        {
-            LocalPlayer->Location.Angle[2] = LocalCamera->Location.Angle[2];
-        }
-
-        LocalCamera->Location.VelocityTotal[2] = sqrtf(            
-            LocalPlayer->Location.VelocityFront[2] * LocalPlayer->Location.VelocityFront[2]
-        );
 
 
 
@@ -457,12 +833,13 @@ void UpdatePlayerControls()
 
 void GetPlayerTargets()
 {
+    float TargetCheck;
     for (int ThisPlayer = 0; ThisPlayer < PlayerCount; ThisPlayer++)
     {
         GamePlayers[ThisPlayer].ZTarget = 0;
         if (GamePlayers[ThisPlayer].IsCPU == 0)
         {
-            GamePlayers[ThisPlayer].ZTarget = CheckViewCone(ThisPlayer);
+            GamePlayers[ThisPlayer].ZTarget = CheckViewCone(&TargetCheck, ThisPlayer, 1000.0f);
         }
         
     }
@@ -470,7 +847,55 @@ void GetPlayerTargets()
 
 
 
+void CheckPlayerHealth()
+{
+    for (int ThisPlayer = 0; ThisPlayer < PlayerCount + BotCount; ThisPlayer++)
+    {
+        Player* LocalPlayer = (Player*)&GamePlayers[ThisPlayer];
+        if (LocalPlayer->HealthData.IFrames > 0)
+        {
+            LocalPlayer->HealthData.IFrames--;
+        }
+        if (LocalPlayer->HealthData.HitFrames > 0)
+        {
+            LocalPlayer->HealthData.HitFrames--;
 
+            
+            LocalPlayer->HealthData.DisplayStatus = DISPLAY_OFF;
+            if (LocalPlayer->HealthData.Shield > 0)
+            {
+                LocalPlayer->HealthData.DisplayStatus = DISPLAY_ON;
+            }
+        }
+
+
+        if (LocalPlayer->HealthData.HitFrames <= 0)
+        {
+            LocalPlayer->HealthData.HitFrames = 0;
+            LocalPlayer->HealthData.RechargeStatus = RECHARGE_ON;
+            LocalPlayer->HealthData.DisplayStatus = DISPLAY_OFF;
+        }
+
+        if (LocalPlayer->HealthData.RechargeStatus == RECHARGE_ON)
+        {
+            if (LocalPlayer->HealthData.Health < MAXHEALTH)
+            {
+                LocalPlayer->HealthData.Health++;
+            }
+            else
+            {
+                if (LocalPlayer->HealthData.Shield < MAXSHIELD)
+                {
+                    LocalPlayer->HealthData.Shield++;
+                }
+                else
+                {
+                    LocalPlayer->HealthData.RechargeStatus = RECHARGE_OFF;
+                }                
+            }
+        }
+    }
+}
 
 
 void UpdatePlayerResponse()
@@ -483,32 +908,62 @@ void UpdatePlayerResponse()
     {
         Player* LocalPlayer = (Player*)&GamePlayers[ThisPlayer];
 
-        if (LocalPlayer->ActionBits & ACTIONJUMP)
+
+        PRINTF("PLY %d - %04x \n", ThisPlayer, LocalPlayer->StatusBits);
+
+
+        
+        if (LocalPlayer->RespawnTimer > 0)
         {
-            //player jump
-            LocalPlayer->Location.VelocityFront[2] = JUMPHEIGHT;
-            LocalPlayer->ActionBits &= ~ACTIONJUMP;
-            LocalPlayer->StatusBits |= STATUSINAIR;
+            LocalPlayer->RespawnTimer--;
+            LocalPlayer->StatusBits &= ~STATUSFPS;
+            LocalPlayer->StatusBits &= ~STATUSZOOM;
+        }
+        if (LocalPlayer->RespawnTimer == 0)
+        {
+            LocalPlayer->RespawnTimer = -1;
+            LocalPlayer->StatusBits |= STATUSFPS;
+            initPlayer(ThisPlayer);
+            
         }
 
-        if (LocalPlayer->ActionBits & ACTIONFIRE)
-        {
-            FireBullet(ThisPlayer);
-        }
 
-        if (LocalPlayer->ActionBits & ACTIONMELEE)
+        if (LocalPlayer->RespawnTimer == -1)
         {
-            PlayerMelee(ThisPlayer);
-        }
+            if (LocalPlayer->ActionBits & ACTIONJUMP)
+            {
+                //player jump
+                LocalPlayer->Location.VelocityFront[2] = JUMPHEIGHT;
+                LocalPlayer->ActionBits &= ~ACTIONJUMP;
+                LocalPlayer->StatusBits |= STATUSINAIR;
+            }
 
-        if (LocalPlayer->ActionBits & ACTIONRELOAD)
-        {
-            ReloadWeapon(ThisPlayer);
+            if (LocalPlayer->ActionBits & ACTIONFIRE)
+            {
+                FireBullet(ThisPlayer);
+            }
+            if (LocalPlayer->ActionBits & ACTIONMELEE)
+            {
+                PlayerMelee(ThisPlayer);
+            }
+            if (LocalPlayer->ActionBits & ACTIONRELOAD)
+            {
+                ReloadWeapon(ThisPlayer);
+            }
+            if (LocalPlayer->ActionBits & ACTIONSWAPGUN)
+            {
+                SwapGun(ThisPlayer);
+            }
+
+            LocalPlayer->ClosestPickup = CheckPickups(ThisPlayer);
+            if (LocalPlayer->ActionBits & ACTIONPICKUP)
+            {
+                PickupObject(ThisPlayer);
+            }
+            
+            
         }
-        if (LocalPlayer->ActionBits & ACTIONSWAPGUN)
-        {
-            SwapGun(ThisPlayer);
-        }
+        
 
         for (int ThisVector = 0; ThisVector < 3; ThisVector++)
         {
@@ -521,7 +976,13 @@ void UpdatePlayerResponse()
             }
         }
         
-        
+
+        LocalPlayer->Location.VelocityFront[2] += GRAVITY;
+        if (LocalPlayer->Location.VelocityFront[2] > TERMINALVELOCITY)
+        {
+            LocalPlayer->Location.VelocityFront[2] = TERMINALVELOCITY;
+        }
+
         //Run collision against the level environment.
         float TotalSpeed = (        
             LocalPlayer->Location.VelocityFront[0] * LocalPlayer->Location.VelocityFront[0] +
@@ -532,9 +993,10 @@ void UpdatePlayerResponse()
 
         if ((TotalSpeed > MINIMALVELOCITY) || (LocalPlayer->StatusBits & STATUSINAIR))
         {
-            if (!PlayerLevelCollision(ThisPlayer))
+            if (!PlayerLevelCollisionC(ThisPlayer))
             {
-                PlayerLevelCollisionB(ThisPlayer);
+                //PlayerLevelCollisionB(ThisPlayer);
+                LocalPlayer->StatusBits |= STATUSINAIR;
             }
             else
             {
@@ -542,42 +1004,33 @@ void UpdatePlayerResponse()
                 LocalPlayer->Location.VelocityFront[0] *= 0.85f;
                 LocalPlayer->Location.VelocityFront[1] *= 0.85f;
             }
-            
-
-            LocalPlayer->Location.VelocityFront[2] += GRAVITY;
-
-            if (LocalPlayer->Location.VelocityFront[2] > TERMINALVELOCITY)
-            {
-                LocalPlayer->Location.VelocityFront[2] = TERMINALVELOCITY;
-            }
         }   
         else
         {
             LocalPlayer->Location.VelocityFront[0] = 0;
             LocalPlayer->Location.VelocityFront[1] = 0;
             LocalPlayer->Location.VelocityFront[2] = 0;
-            
         }
         
 
         
         
-        
 
         //Apply gravity to the player. Cap at terminal velocity.
         
-
-
-        PGCamera* LocalCamera = (PGCamera*)&GameCameras[ThisPlayer];
-        //Player position is assumed to be the feet.
-
-
         
         if (LocalPlayer->IsCPU)
         {
             //dont move camera for CPUs
             continue;
         }
+
+
+        
+
+
+        PGCamera* LocalCamera = (PGCamera*)&GameCameras[ThisPlayer];
+        //Player position is assumed to be the feet.
 
 
         LocalCamera->Location.Position[0] = LocalPlayer->Location.Position[0];
@@ -593,6 +1046,7 @@ void UpdatePlayerResponse()
             LocalCamera->LookAt[2] = 0;
 
             AlignXVector(LocalCamera->LookAt, LocalCamera->Location.Angle[0]);
+            AlignYVector(LocalCamera->LookAt, LocalCamera->Location.Angle[1]);
             AlignZVector(LocalCamera->LookAt, LocalCamera->Location.Angle[2]);
 
             LocalCamera->LookAt[0] += LocalCamera->Location.Position[0];
@@ -607,6 +1061,7 @@ void UpdatePlayerResponse()
             Target[2] = -5;
 
             AlignXVector(Target, LocalCamera->Location.Angle[0]);
+            AlignYVector(Target, LocalCamera->Location.Angle[1]);
             AlignZVector(Target, LocalCamera->Location.Angle[2]);
 
             LocalCamera->LookAt[0] = LocalCamera->Location.Position[0];
@@ -621,7 +1076,6 @@ void UpdatePlayerResponse()
         
     }
     
-    return;
     Vector Size;
     Size[0] = GamePlayers[0].Location.Radius;
     Size[1] = GamePlayers[0].Location.Radius;
@@ -632,10 +1086,6 @@ void UpdatePlayerResponse()
         {
             if (GetDistance(GamePlayers[ThisPlayer].Location.Position,GamePlayers[ThisTarget].Location.Position) < (GamePlayers[ThisPlayer].Location.Radius + GamePlayers[ThisTarget].Location.Radius))
             {
-                if (GamePlayers[ThisPlayer].IsCPU == 0)
-                {
-                    GamePlayers[ThisPlayer].HealthData.Health -= 10;
-                }
                 SetSimpleBump(GamePlayers[ThisTarget].Location.Position, Size, GamePlayers[ThisPlayer].Location.Position, Size);
             }
         }

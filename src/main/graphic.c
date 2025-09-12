@@ -18,12 +18,11 @@
 #include "memory.h"
 #include "pathfinding.h"
 #include "animations.h"
+
 #include "assets/models/DebugCylinder_HitBox_Model.h"
 #include "FPGraphics.h"
 #include "assets/assets.h"
 
-extern void DrawPlayers();
-extern void DrawBullets();
 
 Gfx gfx_glist[2][GFX_GLIST_LEN];
 Gfx gfx_clear_glist[2][GFX_CLEAR_GLIST_LEN];
@@ -31,7 +30,19 @@ Dynamic gfx_dynamic[2];
 Gfx *glistp;
 u32 gfx_gtask_no = 0;
 
-Mtx EntityMap[4096];
+
+#define	LDIRX	180
+#define	LDIRY	0
+#define	LDIRZ	32
+#define	AMBDIV	1
+Lights1 Player_Lights[4]={
+	{{128, 128, 128, 0, 128, 128, 128, 0},{240,128,128,0,240,128,128,0,LDIRX,LDIRY,LDIRZ,0}},
+    {{128, 128, 128, 0, 128, 128, 128, 0},{240,128,128,0,240,128,128,0,LDIRX,LDIRY,LDIRZ,0}},
+    {{128, 128, 128, 0, 128, 128, 128, 0},{240,128,128,0,240,128,128,0,LDIRX,LDIRY,LDIRZ,0}},
+    {{128, 128, 128, 0, 128, 128, 128, 0},{240,128,128,0,240,128,128,0,LDIRX,LDIRY,LDIRZ,0}},
+};
+
+Mtx EntityMap[9192];
 short CurrentEntity[4];
 int GlobalFrame;
 short RenderEnable, GameSequence;
@@ -61,6 +72,26 @@ void gfxRCPInit(void)
   Use nuGfxZBuffer (the address of the Z-buffer) and nuGfxCfb_ptr (the
   address of the frame buffer) which are global variables of NuSYSTEM.
 ----------------------------------------------------------------------------*/
+
+
+void gfxClearZfb(void)
+{
+    /* Clear the Z-buffer  */
+    gDPSetScissor(glistp++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WD, SCREEN_HT);
+    gDPSetDepthImage(glistp++, osVirtualToPhysical(nuGfxZBuffer));
+    gDPPipeSync(glistp++);
+    gDPSetCycleType(glistp++, G_CYC_FILL);
+    gDPSetColorImage(glistp++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WD,
+                        osVirtualToPhysical(nuGfxZBuffer));
+    gDPSetFillColor(glistp++, (GPACK_ZDZ(G_MAXFBZ, 0) << 16 |
+                                GPACK_ZDZ(G_MAXFBZ, 0)));
+    
+    gDPFillRectangle(glistp++, 0, 0, SCREEN_WD - 1, SCREEN_HT - 1);
+    gDPPipeSync(glistp++);
+    gDPSetColorImage(glistp++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WD,
+                     osVirtualToPhysical(nuGfxCfb_ptr));
+
+}
 void gfxClearCfb(void)
 {
     /* Clear the Z-buffer  */
@@ -86,13 +117,13 @@ void SetMatrix(int Mode)
 {
     if (Mode == 0)
     {
-        AffineToMtx((Mtx *)&EntityMap[CurrentEntity[GlobalFrame % 2]], GlobalAffine);
+        AffineToMtx(GlobalAffine, (Mtx *)&EntityMap[CurrentEntity[GlobalFrame % 2]]);
         gSPMatrix(glistp++, &EntityMap[CurrentEntity[GlobalFrame % 2]++],
                   G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
         return;
     }
 
-    AffineToMtx((Mtx *)&EntityMap[CurrentEntity[GlobalFrame % 2]], GlobalAffine);
+    AffineToMtx(GlobalAffine, (Mtx *)&EntityMap[CurrentEntity[GlobalFrame % 2]]);
     gSPMatrix(glistp++, &EntityMap[CurrentEntity[GlobalFrame % 2]++],
               G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
 }
@@ -110,39 +141,6 @@ Gfx EndDL[] =
         gsSPEndDisplayList(),
 };
 
-
-static Vp VPrime = {
-    SCREEN_WD * 2, SCREEN_HT * 2, G_MAXZ / 2, 0, /* The scale factor  */
-    SCREEN_WD * 2, SCREEN_HT * 2, G_MAXZ / 2, 0, /* Move  */
-};
-
-static Vp P1 = {
-    SCREEN_WD * 2, SCREEN_HT, G_MAXZ / 2, 0, /* The scale factor  */
-    SCREEN_WD * 2, SCREEN_HT, G_MAXZ / 2, 0, /* Move  */
-};
-static Vp P2 = {
-    SCREEN_WD * 2, SCREEN_HT, G_MAXZ / 2, 0, /* The scale factor  */
-    SCREEN_WD * 2, SCREEN_HT, G_MAXZ / 2, 0, /* Move  */
-};
-
-static Vp P3 = {
-    SCREEN_WD * 2, SCREEN_HT, G_MAXZ / 2, 0, /* The scale factor  */
-    SCREEN_WD * 2, SCREEN_HT, G_MAXZ / 2, 0, /* Move  */
-};
-static Vp P4 = {
-    SCREEN_WD * 2, SCREEN_HT, G_MAXZ / 2, 0, /* The scale factor  */
-    SCREEN_WD * 2, SCREEN_HT, G_MAXZ / 2, 0, /* Move  */
-};
-
-
-
-Vp *ViewportArray[] = 
-{
-    &P1,
-    &P2,
-    &P3,
-    &P4
-};
 
 
 ushort GetRGBA16(int R, int G, int B, int A)
@@ -179,185 +177,139 @@ Gfx mat_env_shine[] = {
 };
 */
 
-void DrawShieldHealth(int PlayerIndex)
-{
-    Player *LocalPlayer = (Player *)&GamePlayers[PlayerIndex];
 
+short LevelNormal[4], FPNormal[4];
+
+void DrawFirstPerson(Dynamic *dynamicp, int PlayerIndex)
+{
+
+    
+    Player *LocalPlayer = (Player *)&GamePlayers[PlayerIndex];
     if (LocalPlayer->IsCPU)
     {
-        // Don't draw for CPU bots
         return;
     }
+    if (LocalPlayer->StatusBits & STATUSZOOM)
+    {
+        return;
+    }
+    if (!(LocalPlayer->StatusBits & STATUSFPS))
+    {
+        return;
+    }
+    
+    
     PGCamera *LocalCamera = (PGCamera *)&GameCameras[PlayerIndex];
+    
+    PGScreen *LocalScreen = (PGScreen*)&LocalCamera->Screen;
+    LocalScreen->Viewport.vp.vscale[0] = LocalCamera->Screen.Size[0] * 2;
+    LocalScreen->Viewport.vp.vscale[1] = LocalCamera->Screen.Size[1] * 2;
+    
+    LocalScreen->Viewport.vp.vtrans[0] = LocalCamera->Screen.Position[0] * 4;
+    LocalScreen->Viewport.vp.vtrans[1] = LocalCamera->Screen.Position[1] * 4;
+    
+    gSPViewport(glistp++, (Vp*)&LocalScreen->Viewport);
+    
+    Light_t* Target = (Light_t*)&Player_Lights[PlayerIndex].l[0];
 
-    int ColorCheck = LocalPlayer->HealthData.Shield;
+    Vector LightPath;
+    LightPath[0] = -0;
+    LightPath[1] = -96;
+    LightPath[2] = -64;
+    //{128,128,128,0,128,128,128,0,LDIRX,LDIRY,LDIRZ,0}
+    
+    AlignZVector(LightPath, LocalCamera->Location.Angle[2]);
+    AlignYVector(LightPath, LocalCamera->Location.Angle[1]);
+
+    Target->dir[0] = LightPath[0];
+    Target->dir[1] = LightPath[1];
+    
+    
+    // Setup model matrix
+    guPerspective(&dynamicp->FPMap.Projection[PlayerIndex], &FPNormal[PlayerIndex],
+                    LocalCamera->FOVY, (float)(LocalCamera->Screen.Size[0] / LocalCamera->Screen.Size[1]), 2.0, 1500.0f, 1.0);
+    gSPPerspNormalize(glistp++, FPNormal[PlayerIndex]);
+
+    guLookAt(&dynamicp->FPMap.Viewing[PlayerIndex],
+                0, 0, 0,
+                0, 100.0f, 0,
+                0, 0, 1);
+
+    guTranslate(&dynamicp->FPMap.Translation[PlayerIndex], 0.0f, 0.0f, 0.0f);
+    guScale(&dynamicp->FPMap.Scale[PlayerIndex], 1.0f, 1.0f, 1.0f);
+    guRotate(&dynamicp->FPMap.Rotation[PlayerIndex], (float)(LocalCamera->Impulse / 5.0f), 1.0f, 0.0F, 0.0f);
 
     
-    if (ColorCheck > 75)
-    {
-        gDPSetPrimColor(glistp++, 0, 0, 32, 208, 255, 192);
-    }
-    else if (ColorCheck > 40)
-    {
-        gDPSetPrimColor(glistp++, 0, 0, 255, 255, 0, 192);
-    }
-    else
-    {
-        gDPSetPrimColor(glistp++, 0, 0, 255, 0, 0, 192);
-    }
-
+    gSPMatrix(glistp++, &dynamicp->FPMap.Projection[PlayerIndex],
+                G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH);
+    gSPMatrix(glistp++, &dynamicp->FPMap.Viewing[PlayerIndex],
+                G_MTX_PROJECTION | G_MTX_MUL | G_MTX_NOPUSH);
+    gSPMatrix(glistp++, &dynamicp->FPMap.Translation[PlayerIndex],
+                G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
+    gSPMatrix(glistp++, &dynamicp->FPMap.Rotation[PlayerIndex],
+                G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_NOPUSH);
+    // Draw FP Hands
     
-    gSPSetGeometryMode(glistp++,G_SHADE | G_SHADING_SMOOTH);
-    gDPSetCombineLERP(glistp++,TEXEL0, 0, PRIMITIVE, 0,
-                        0, 0, 0, TEXEL0,
-                        TEXEL0, 0, PRIMITIVE, 0,
-                        0, 0, 0, TEXEL0);
-    gDPSetTexturePersp(glistp++,G_TP_NONE);
-    gDPSetTextureFilter(glistp++,G_TF_BILERP);
-    gDPSetTextureConvert(glistp++,G_TC_FILT);
-    gDPSetTextureLOD(glistp++,G_TL_TILE);
-    gDPSetTextureDetail(glistp++,G_TD_CLAMP);
-    gDPSetTextureLUT(glistp++,G_TT_NONE);
-    gDPSetRenderMode(glistp++,  G_RM_AA_XLU_SURF, G_RM_AA_XLU_SURF2);
-
-    gDPSetTextureLUT(glistp++, G_TT_RGBA16);
-	gSPTexture(glistp++, 65535, 65535, 0, 0, 1);
-	gDPLoadTLUT_pal16(glistp++, 0, &ShieldHealthbar_PAL);
-	gDPLoadTextureBlock_4b(glistp++, &ShieldHealthbar_T, G_IM_FMT_CI,128,32,0,G_TX_CLAMP,G_TX_CLAMP,7,5,0,0);
     
-    gSPTextureRectangle
+    gDPSetScissor
     (
-        glistp++,
-        ( (210) <<2), 
-        ( (13) <<2), 
-        ( (298)<<2), 
-        ( (37) <<2), 
-        G_TX_RENDERTILE, 
-        0, 0, 
-        1<<10, 1<<10
+        glistp++, 
+        G_SC_NON_INTERLACE, 
+        LocalCamera->Screen.Position[0] - (LocalCamera->Screen.Size[0] * 0.5f), 
+        LocalCamera->Screen.Position[1] - (LocalCamera->Screen.Size[1] * 0.5f), 
+        LocalCamera->Screen.Position[0] + (LocalCamera->Screen.Size[0] * 0.5f), 
+        LocalCamera->Screen.Position[1] + (LocalCamera->Screen.Size[1] * 0.5f)
     );
 
-    
-    ColorCheck = GamePlayers[PlayerIndex].HealthData.Health;
 
-    if (ColorCheck > 75)
-    {
-        gDPSetPrimColor(glistp++, 0, 0, 25, 192, 255, 192);
+    gSPNumLights(glistp++, 1);
+    gSPLight(glistp++, (&Player_Lights[PlayerIndex].l[0]),1);
+	gSPLight(glistp++, (&Player_Lights[PlayerIndex].a),2);
+
+
+    DrawHolster((AnimeHolster*)GamePlayers[PlayerIndex].FPAnime, GamePlayers[PlayerIndex].FPAnimeTimer.CurrentTime);
+    gDPPipeSync(glistp++);
         
-    }
-    else if (ColorCheck > 40)
-    {
-        gDPSetPrimColor(glistp++, 0, 0, 255, 255, 0, 192);
-    }
-    else
-    {
-        gDPSetPrimColor(glistp++, 0, 0, 255, 0, 0, 192);
-    }
-
         
-    for (int ThisPass = 0; ThisPass < ColorCheck / 12; ThisPass ++)
-    {
-        gSPTextureRectangle
-        (
-            glistp++,
-            ( (225 + (ThisPass * 6)) << 2), 
-            ( (31) << 2), 
-            ( (231 + (ThisPass * 6)) << 2), 
-            ( (41) << 2), 
-            G_TX_RENDERTILE, 
-            3200, 480, 
-            1<<10, 1<<10
-        );
-    }
-    
-
-}
-
-
-void DrawHUD(int PlayerIndex)
-{
-    Player *LocalPlayer = (Player *)&GamePlayers[PlayerIndex];
-
-    if (LocalPlayer->IsCPU)
-    {
-        // Don't draw for CPU bots
-        return;
-    }
-    PGCamera *LocalCamera = (PGCamera *)&GameCameras[PlayerIndex];
-
-    gSPClearGeometryMode(glistp++, G_ZBUFFER);
-
-
-
-    /*
-    //reticle
-    if (GamePlayers[PlayerIndex].ZTarget > 0)
-    {
-        gDPSetPrimColor(glistp++, 0, 0, 255, 0, 0, 192);
-    }
-    else
-    {
-        gDPSetPrimColor(glistp++, 0, 0, 25, 192, 255, 192);
-    }
-    Player* LocalPlayer =       (Player*)&GamePlayers[PlayerIndex];
-    WeaponClass* LocalWeapon;
-    WeaponEquipment* LocalEquipment;
-    if (LocalPlayer->SelectedWeapon == 0)
-    {
-        LocalEquipment = (WeaponEquipment*)&LocalPlayer->WeaponArray;
-        LocalWeapon = (WeaponClass*)LocalPlayer->WeaponArray.Class;
-    }
-    else
-    {
-        LocalEquipment = (WeaponEquipment*)&LocalPlayer->SecondaryWeapon;
-        LocalWeapon = (WeaponClass*)LocalPlayer->SecondaryWeapon.Class;
-    }
-    
-    
-    
-   	gSPDisplayList(glistp++, LocalWeapon->Reticle);
-    */
-
-    
-
-    
-    DrawShieldHealth(PlayerIndex);
-
-    //gDPSetPrimColor(glistp++, 0, 0, 25, 192, 255, 192);
-    //DrawARAmmo(LocalEquipment->Magazine);
-    //gDPSetTextureLUT(glistp++, G_TT_NONE);
-
-
     
 }
-
-
 void DrawLevelScene(Dynamic *dynamicp, int PlayerIndex)
 {
-    gDPSetTextureFilter(glistp++, G_TF_BILERP)
-    static u16 LevelNormal[4], FPNormal[4];
-    Player *LocalPlayer = (Player *)&GamePlayers[PlayerIndex];
+    
+    PGCamera *LocalCamera = (PGCamera *)&GameCameras[PlayerIndex];
 
+    
+    
+    Player *LocalPlayer = (Player *)&GamePlayers[PlayerIndex];
     if (LocalPlayer->IsCPU)
     {
         // Don't draw for CPU bots
         return;
     }
-    PGCamera *LocalCamera = (PGCamera *)&GameCameras[PlayerIndex];
-
     
-
-    ViewportArray[PlayerIndex]->vp.vscale[0] = LocalCamera->Screen.Size[0] * 2;
-    ViewportArray[PlayerIndex]->vp.vscale[1] = LocalCamera->Screen.Size[1] * 2;
-    ViewportArray[PlayerIndex]->vp.vtrans[0] = LocalCamera->Screen.Position[0] * 4;
-    ViewportArray[PlayerIndex]->vp.vtrans[1] = LocalCamera->Screen.Position[1] * 4;
-
-
+    PGScreen *LocalScreen = (PGScreen*)&LocalCamera->Screen;
+    LocalScreen->Viewport.vp.vscale[0] = LocalCamera->Screen.Size[0] * 2;
+    LocalScreen->Viewport.vp.vscale[1] = LocalCamera->Screen.Size[1] * 2;
+    
+    LocalScreen->Viewport.vp.vtrans[0] = LocalCamera->Screen.Position[0] * 4;
+    LocalScreen->Viewport.vp.vtrans[1] = LocalCamera->Screen.Position[1] * 4;
+    
+    gSPViewport(glistp++, (Vp*)&LocalScreen->Viewport);
+    if (LocalPlayer->StatusBits & STATUSZOOM)
+    {
+        
+        LocalCamera->FOVY = 70.0f / LocalPlayer->ZoomFloat;
+    }
+    else
+    {
+        LocalCamera->FOVY = 70.0f;
+    }
+    
     guPerspective(&dynamicp->LevelMap.Projection[PlayerIndex], &LevelNormal[PlayerIndex],
-                  LocalCamera->FOVY, (LocalCamera->Screen.Size[0] / LocalCamera->Screen.Size[1]), LocalCamera->Near, LocalCamera->Far, 1.0);
+                  LocalCamera->FOVY, (float)(LocalCamera->Screen.Size[0] / LocalCamera->Screen.Size[1]), LocalCamera->Near, LocalCamera->Far, 1.0);
     gSPPerspNormalize(glistp++, LevelNormal[PlayerIndex]);
 
-    guLookAtReflect(&dynamicp->LevelMap.Viewing[PlayerIndex], &dynamicp->LevelMap.Reflection[PlayerIndex],
+    guLookAt(&dynamicp->LevelMap.Viewing[PlayerIndex],
              LocalCamera->Location.Position[0], LocalCamera->Location.Position[1], LocalCamera->Location.Position[2],
              LocalCamera->LookAt[0], LocalCamera->LookAt[1], LocalCamera->LookAt[2],
              LocalCamera->UpVector[0], LocalCamera->UpVector[1], LocalCamera->UpVector[2]);
@@ -372,169 +324,114 @@ void DrawLevelScene(Dynamic *dynamicp, int PlayerIndex)
               G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
 
 
-        gDPSetScissor
-        (
-            glistp++, 
-            G_SC_NON_INTERLACE, 
-            LocalCamera->Screen.Position[0] - (LocalCamera->Screen.Size[0] * 0.5f), 
-            LocalCamera->Screen.Position[1] - (LocalCamera->Screen.Size[1] * 0.5f), 
-            LocalCamera->Screen.Position[0] + (LocalCamera->Screen.Size[0] * 0.5f), 
-            LocalCamera->Screen.Position[1] + (LocalCamera->Screen.Size[1] * 0.5f)
-        );
+    gDPSetScissor
+    (
+        glistp++, 
+        G_SC_NON_INTERLACE, 
+        LocalCamera->Screen.Position[0] - (LocalCamera->Screen.Size[0] * 0.5f), 
+        LocalCamera->Screen.Position[1] - (LocalCamera->Screen.Size[1] * 0.5f), 
+        LocalCamera->Screen.Position[0] + (LocalCamera->Screen.Size[0] * 0.5f), 
+        LocalCamera->Screen.Position[1] + (LocalCamera->Screen.Size[1] * 0.5f)
+    );
 
-    gSPViewport(glistp++, ViewportArray[PlayerIndex]);
+
     
-    gSPLookAt(glistp++, &dynamicp->LevelMap.Reflection[PlayerIndex]);
-
-    gSPDisplayList(glistp++, OS_K0_TO_PHYSICAL(TableAddress[LevelIndex]));
-
-    DrawPlayers(PlayerIndex);
-    DrawBullets(PlayerIndex);
     
-    if (LocalPlayer->StatusBits & STATUSFPS)
-    {
-        // Clear Z-buffer
-        gDPSetRenderMode(glistp++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
-        gDPSetDepthImage(glistp++, osVirtualToPhysical(nuGfxZBuffer));
-        gDPPipeSync(glistp++);
-        gDPSetCycleType(glistp++, G_CYC_FILL);
-        gDPSetColorImage(glistp++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WD,
-                            osVirtualToPhysical(nuGfxZBuffer));
-        gDPSetFillColor(glistp++, (GPACK_ZDZ(G_MAXFBZ, 0) << 16 |
-                                    GPACK_ZDZ(G_MAXFBZ, 0)));
-
-        gDPFillRectangle(
-            glistp++, 
-            LocalCamera->Screen.Position[0] - (LocalCamera->Screen.Size[0] * 0.5f), 
-            LocalCamera->Screen.Position[1] - (LocalCamera->Screen.Size[1] * 0.5f), 
-            LocalCamera->Screen.Position[0] + (LocalCamera->Screen.Size[0] * 0.5f) - 1, 
-            LocalCamera->Screen.Position[1] + (LocalCamera->Screen.Size[1] * 0.5f) - 1
-        );
-        gDPPipeSync(glistp++);
-
-        gDPSetColorImage(glistp++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WD,
-                            osVirtualToPhysical(nuGfxCfb_ptr));
-        gDPPipeSync(glistp++);
-        gDPSetCycleType(glistp++, G_CYC_1CYCLE);
-        
-
-        
-        Light_t* Target = (Light_t*)&AR_Lights[0].l[0];
-
-        Vector LightPath;
-        LightPath[0] = -0;
-        LightPath[1] = -100;
-        LightPath[2] = -150;
-        //{128,128,128,0,128,128,128,0,LDIRX,LDIRY,LDIRZ,0}
-        
-        AlignZVector(LightPath, LocalCamera->Location.Angle[2]);
-        AlignYVector(LightPath, LocalCamera->Location.Angle[1]);
-
-        Target->dir[0] = LightPath[0];
-        Target->dir[1] = LightPath[1];
-        
-
-        // Setup model matrix
-        guPerspective(&dynamicp->FPMap.Projection[PlayerIndex], &FPNormal[PlayerIndex],
-                      LocalCamera->FOVY, (LocalCamera->Screen.Size[0] / LocalCamera->Screen.Size[1]), 2.0, 1500.0f, 1.0);
-        gSPPerspNormalize(glistp++, FPNormal[PlayerIndex]);
-
-        guLookAt(&dynamicp->FPMap.Viewing[PlayerIndex],
-                 0, 0, 0,
-                 0, 100.0f, 0,
-                 0, 0, 1);
-
-        guTranslate(&dynamicp->FPMap.Translation[PlayerIndex], 0.0f, 0.0f, 0.0f);
-        guScale(&dynamicp->FPMap.Scale[PlayerIndex], 1.0f, 1.0f, 1.0f);
-        guRotate(&dynamicp->FPMap.Rotation[PlayerIndex], (float)(LocalCamera->Impulse / 5.0f), 1.0f, 0.0F, 0.0f);
-
-        
-        gSPMatrix(glistp++, &dynamicp->FPMap.Projection[PlayerIndex],
-                  G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH);
-        gSPMatrix(glistp++, &dynamicp->FPMap.Viewing[PlayerIndex],
-                  G_MTX_PROJECTION | G_MTX_MUL | G_MTX_NOPUSH);
-        gSPMatrix(glistp++, &dynamicp->FPMap.Translation[PlayerIndex],
-                  G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
-        gSPMatrix(glistp++, &dynamicp->FPMap.Scale[PlayerIndex],
-                  G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_NOPUSH);
-        gSPMatrix(glistp++, &dynamicp->FPMap.Rotation[PlayerIndex],
-                  G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_NOPUSH);
-        // Draw FP Hands
-
-        
-        DrawHolster((AnimeHolster*)GamePlayers[PlayerIndex].FPAnime, GamePlayers[PlayerIndex].FPAnimeTimer.CurrentTime);
-        
-    }
+    
+    gSPDisplayList(glistp++, OS_K0_TO_PHYSICAL(0x06000000 | LoadedScenario.DisplayTableAddress));
+    
+    gDPSetRenderMode(glistp++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
+    
+    
+    
 
 
     
 }
 #define PROJ_COMBINE 1, 0, PRIMITIVE, 0, 1, 0, 1, 0
 ushort ProjR, ProjG, ProjB;
+
+void DrawPickups(int ThisPlayer)
+{
+    float Check = 0;
+    Vector Source, Target;
+    Source[0] = GamePlayers[ThisPlayer].Location.Position[0];
+    Source[1] = GamePlayers[ThisPlayer].Location.Position[1];
+    Source[2] = GamePlayers[ThisPlayer].Location.Position[2];
+
+    ProjR = (255 >> 11) & 0x1F;
+    ProjG = (255 >> 6) & 0x1F;
+    ProjB = (0 >> 1) & 0x1F;
+
+    gDPSetPrimColor(glistp++, 0, 0, ProjR * 8, ProjG * 8, ProjB * 8, 255);
+    gDPSetCombineMode (glistp++, PROJ_COMBINE, PROJ_COMBINE);
+    gSPSetGeometryMode(glistp++, G_SHADE | G_ZBUFFER | G_CULL_BACK);
+    gDPSetRenderMode(glistp++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
+    gDPPipeSync(glistp++);
+    
+
+    for (int ThisPick = 0; ThisPick < TotalStaticPicks; ThisPick++)
+    {
+        Target[0] = StaticPickArray[ThisPick].Position[0];
+        Target[1] = StaticPickArray[ThisPick].Position[1];
+        Target[2] = StaticPickArray[ThisPick].Position[2];
+        
+
+        //Check = GetDistance(Source, Target);
+        //if (Check < PICKUPDRAW)
+        {
+            CreatePositionMatrix(GlobalAffine, Target);
+            SetMatrix(0);
+            gSPDisplayList(glistp++, logo_bulletbox);
+        }
+    }
+}
+
+
 void DrawBullets(int ThisPlayer)
 {
+    Vector Up;
+    Vector Forward;
+    Vector Right;
+    Vector TrueUp;
+    Quaternion Quat;
+    Up[0] = 0;
+    Up[1] = 0;
+    Up[2] = 1.0f;
+    
+    gDPSetCombineMode (glistp++, PROJ_COMBINE, PROJ_COMBINE);
+    gSPSetGeometryMode(glistp++, G_SHADE | G_ZBUFFER | G_CULL_BACK);
+    gDPSetRenderMode(glistp++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
+    gDPPipeSync(glistp++);
     for (int ThisBullet = 0; ThisBullet < MAXBULLETS; ThisBullet++)
     {
-        
         if (ProjectileArray[ThisBullet].Status == BULLET_INACTIVE)
         {
             continue;
         }
 
         Projectile* LocalBullet = &ProjectileArray[ThisBullet];
-
-        guTranslate(&EntityMap[CurrentEntity[GlobalFrame % 2]],
-                    (LocalBullet->Location.Position[0]),
-                    (LocalBullet->Location.Position[1]),
-                    (LocalBullet->Location.Position[2]));
-        gSPMatrix(glistp++, &EntityMap[CurrentEntity[GlobalFrame % 2]++],
-                  G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
-
-        guRotate(&EntityMap[CurrentEntity[GlobalFrame % 2]],
-                 (float)(LocalBullet->Location.Angle[2] / 185.0f),
-                 0.0f,
-                 0.0f,
-                 1.0f);
-
-        gSPMatrix(glistp++, &EntityMap[CurrentEntity[GlobalFrame % 2]++],
-                  G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-
-        guRotate(&EntityMap[CurrentEntity[GlobalFrame % 2]],
-                 (float)(LocalBullet->Location.Angle[1] / 185.0f),
-                 0.0f,
-                 1.0f,
-                 0.0f);
-
-        gSPMatrix(glistp++, &EntityMap[CurrentEntity[GlobalFrame % 2]++],
-                  G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-
-        guRotate(&EntityMap[CurrentEntity[GlobalFrame % 2]],
-                 (float)(LocalBullet->Location.Angle[0] / 185.0f),
-                 1.0f,
-                 0.0f,
-                 0.0f);
-
-        gSPMatrix(glistp++, &EntityMap[CurrentEntity[GlobalFrame % 2]++],
-                  G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-
-        
+        CreateModelMatrix(GlobalAffine, LocalBullet->Location.Position, LocalBullet->Location.Angle);
+        SetMatrix(0);
         ProjR = (LocalBullet->RGB >> 11) & 0x1F;
         ProjG = (LocalBullet->RGB >> 6) & 0x1F;
         ProjB = (LocalBullet->RGB >> 1) & 0x1F;
 
+
+
         gDPSetPrimColor(glistp++, 0, 0, ProjR * 8, ProjG * 8, ProjB * 8, 255);
-        gDPSetCombineMode (glistp++, PROJ_COMBINE, PROJ_COMBINE);
         gSPDisplayList(glistp++, logo_bulletbox);
-        gSPPopMatrix(glistp++, G_MTX_MODELVIEW);
-        gSPPopMatrix(glistp++, G_MTX_MODELVIEW);
-        gSPPopMatrix(glistp++, G_MTX_MODELVIEW);
     }
+
+    gDPPipeSync(glistp++);
+
 }
 
 void DrawPlayers(int PlayerIndex)
 {
     // Draw Other Players
     gSPDisplayList(glistp++, Draw_CyborgTP_T);
+    
     for (int ThisPlayer = 0; ThisPlayer < PlayerCount; ThisPlayer++)
     {
         if ((GamePlayers[PlayerIndex].StatusBits & STATUSFPS) && (ThisPlayer == PlayerIndex))
@@ -542,36 +439,12 @@ void DrawPlayers(int PlayerIndex)
             // FP mode and not drawing player's own model.
             continue;
         }
-        /*
+        
         CreateModelMatrix(GlobalAffine, GamePlayers[ThisPlayer].Location.Position, GamePlayers[ThisPlayer].Location.Angle);
-        ScalingMatrix(GlobalAffine,0.5f);
         SetMatrix(0);
-        gSPDisplayList(glistp++, Draw_ar_T);
-        gSPDisplayList(glistp++, Draw_Sphere001_M);
-        gSPDisplayList(glistp++, Draw_ar_T_Closing);
-        */
-
-        guTranslate(&EntityMap[CurrentEntity[GlobalFrame % 2]],
-                    (GamePlayers[ThisPlayer].Location.Position[0]),
-                    (GamePlayers[ThisPlayer].Location.Position[1]),
-                    (GamePlayers[ThisPlayer].Location.Position[2]));
-        gSPMatrix(glistp++, &EntityMap[CurrentEntity[GlobalFrame % 2]++],
-                  G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
-
-        guRotate(&EntityMap[CurrentEntity[GlobalFrame % 2]],
-                 (float)(GamePlayers[ThisPlayer].Location.Angle[2] / 185.0f),
-                 0.0f,
-                 0.0f,
-                 1.0f);
-
-        gSPMatrix(glistp++, &EntityMap[CurrentEntity[GlobalFrame % 2]++],
-                  G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_NOPUSH);
-        gDPPipeSync(glistp++);
-        gSPDisplayList(glistp++, Draw_ar_T);
+        
         gSPDisplayList(glistp++, Draw_HitBox_M);
-    
     }
-    
 
     for (int ThisPlayer = PlayerCount; ThisPlayer < PlayerCount + BotCount; ThisPlayer++)
     {
@@ -579,23 +452,45 @@ void DrawPlayers(int PlayerIndex)
         {
             continue;
         }
-        guTranslate(&EntityMap[CurrentEntity[GlobalFrame % 2]],
-                    (GamePlayers[ThisPlayer].Location.Position[0]),
-                    (GamePlayers[ThisPlayer].Location.Position[1]),
-                    (GamePlayers[ThisPlayer].Location.Position[2]));
-        gSPMatrix(glistp++, &EntityMap[CurrentEntity[GlobalFrame % 2]++],
-                  G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
-
-        guRotate(&EntityMap[CurrentEntity[GlobalFrame % 2]],
-                 (float)(GamePlayers[ThisPlayer].Location.Angle[2] / 185.0f),
-                 0.0f,
-                 0.0f,
-                 1.0f);
-
-        gSPMatrix(glistp++, &EntityMap[CurrentEntity[GlobalFrame % 2]++],
-                  G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_NOPUSH);
-        gDPPipeSync(glistp++);
-        gSPDisplayList(glistp++, Draw_ar_T);
+        CreateModelMatrix(GlobalAffine, GamePlayers[ThisPlayer].Location.Position, GamePlayers[ThisPlayer].Location.Angle);
+        SetMatrix(0);
+        
+        
         gSPDisplayList(glistp++, Draw_HitBox_M);
+    }
+
+
+    
+    gSPDisplayList(glistp++, Draw_Shield_T);
+    short ShieldAlpha, ShieldWork;
+    float ShieldRatio;
+    for (int ThisPlayer = 0; ThisPlayer < PlayerCount + BotCount; ThisPlayer++)
+    {   
+        if (GamePlayers[ThisPlayer].HealthData.DisplayStatus == DISPLAY_ON)
+        {
+            
+            ShieldWork = (90 - (RECHARGE_TIME - GamePlayers[ThisPlayer].HealthData.HitFrames));
+            ShieldRatio = (ShieldWork * .016f);
+            ShieldAlpha = 255;
+            
+            if (ShieldRatio < 1.0f)
+            {
+                if (ShieldRatio > 0)
+                {
+                    ShieldAlpha = (int)(255 * ShieldRatio);
+                }
+                else
+                {
+                    ShieldAlpha = 0;
+                    GamePlayers[ThisPlayer].HealthData.DisplayStatus = DISPLAY_OFF;
+                }
+            }
+
+            gDPSetPrimColor(glistp++, 0, 0, 255, 255, 128, ShieldAlpha);
+            
+            CreateModelMatrix(GlobalAffine, GamePlayers[ThisPlayer].Location.Position, GamePlayers[ThisPlayer].Location.Angle);
+            SetMatrix(0);
+            gSPDisplayList(glistp++, Draw_ShieldBox_M);
+        }
     }
 }

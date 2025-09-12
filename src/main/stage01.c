@@ -10,27 +10,63 @@
 #include "graphic.h"
 #include "levels.h"
 #include "memory.h"
+#include "HUD.h"
+#include "player.h"
+#include "math.h"
 
-static float triPos_x; /* The display position, X */
-static float triPos_y; /* The display position, Y */
-static float theta;    /* The rotational angle of the square */
+short GameFirstStart = 0;
+char* PlayerSelectStrings[] = 
+{
+    "ONE PLAYER",
+    "TWO PLAYERS",
+    "THREE PLAYERS",
+    "FOUR PLAYERS"
+    
+};
 
-void shadetri(Dynamic *dynamicp);
+
+/* Draw a square  */
+void PrintMenuText(Dynamic *dynamicp)
+{
+    int i;
+
+    gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&(dynamicp->LevelMap.Projection)),
+              G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH);
+    gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&(dynamicp->LevelMap.Translation)),
+              G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
+    gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&(dynamicp->LevelMap.Rotation)),
+              G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_NOPUSH);
+
+    DrawText(80, 180, PlayerSelectStrings[PlayerCount - 1], 1.0f);
+}
 
 /* The initialization of stage 1 */
 void initStage01(void)
 {
-    triPos_x = 0.0;
-    triPos_y = 0.0;
-    theta = 0.0;
+    PlayerCount = 1;
 }
+
+Gfx DrawMenu[] = 
+{
+    
+    gsDPSetTextureLUT( 0),
+	gsSPTexture( 65535, 65535, 0, 0, 1),
+	gsDPPipeSync( ),
+	gsDPTileSync( ),
+	
+	gsSPClearGeometryMode(  12518917),
+	gsSPSetGeometryMode(  10486789),
+    
+	gsDPLoadTextureBlock_4b( &ASCII_T, G_IM_FMT_IA,32,256,0,G_TX_CLAMP,G_TX_CLAMP,5,8,0,0),    
+    gsSPEndDisplayList(),
+};
 
 /* Make the display list for stage 1 and activate the task */
 void makeDL01(void)
 {
     Dynamic *dynamicp;
 
-
+    
     glistp = &gfx_clear_glist[gfx_gtask_no][0];
 
     /* Initialize RCP */
@@ -39,7 +75,6 @@ void makeDL01(void)
   
     /* Clear the frame and Z-buffer */
     gfxClearCfb();
-
     assert((glistp - gfx_clear_glist[gfx_gtask_no]) < GFX_CLEAR_GLIST_LEN);
 
     gDPFullSync(glistp++);
@@ -56,6 +91,10 @@ void makeDL01(void)
     glistp = &gfx_glist[gfx_gtask_no][0];
 
     
+    
+
+    osViSetSpecialFeatures(OS_VI_GAMMA_OFF);	     
+    osViSetSpecialFeatures(OS_VI_DITHER_FILTER_ON);
 
     SetSegment(0,0);
     SetSegment(2, osVirtualToPhysical(dynamicp));
@@ -70,12 +109,29 @@ void makeDL01(void)
             -(float)SCREEN_WD / 2.0F, (float)SCREEN_WD / 2.0F,
             -(float)SCREEN_HT / 2.0F, (float)SCREEN_HT / 2.0F,
             1.0F, 10.0F, 1.0F);
-    guTranslate(&dynamicp->LevelMap.Translation[0], triPos_x, triPos_y, 0.0F);
-    guRotate(&dynamicp->LevelMap.Rotation[0], theta, 0.0F, 0.0F, 1.0F);
 
-    /* Draw a square */
-    shadetri(dynamicp);
 
+    
+    gDPPipeSync(glistp++);
+    
+    //gDPSetRenderMode(glistp++, G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE2);
+
+    //gDPSetCycleType	(glistp++ ,G_CYC_COPY);
+    gSPDisplayList(glistp++, DrawMenu);   
+    
+    
+    gDPSetCycleType(glistp++, G_CYC_1CYCLE);
+    gDPSetCombineMode(glistp++, G_CC_DECALRGBA, G_CC_DECALRGBA);
+    //gDPSetRenderMode(glistp++, G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE);
+    gDPSetRenderMode(glistp++, G_RM_AA_XLU_SURF, G_RM_AA_XLU_SURF2);
+    gDPSetDepthSource(glistp++, G_ZS_PRIM);
+    gDPSetPrimDepth(glistp++, 0, 0);
+    gDPSetTexturePersp(glistp++, G_TP_NONE);
+
+    
+    PrintMenuText(dynamicp);
+
+    
     gDPFullSync(glistp++);
     gSPEndDisplayList(glistp++);
 
@@ -98,38 +154,78 @@ void makeDL01(void)
     gfx_gtask_no ^= 1;
 }
 
+
+int HeldTimer = 0;
 /* The game progressing process for stage 1 */
 void updateGame01(void)
 {
-    static float vel = 1.0;
-
     /* Data reading of controller 1 */
-    nuContDataGetEx(contdata, 0);
+    nuContDataGetEx((NUContData*)&contdata[0], 0);
 
     /* Change the display position according to stick data */
-    triPos_x = contdata->stick_x;
-    triPos_y = contdata->stick_y;
+    float XPos = contdata[0].stick_x;
+    float YPos = contdata[0].stick_y;
+    
 
-    /* The reverse rotation by the A button */
-    if (contdata[0].trigger & A_BUTTON)
-        vel = -vel;
+    //deadstick
+    
 
-    /* Rotate fast while the B button is pushed */
-    if (contdata[0].button & B_BUTTON)
-        theta += vel * 3.0;
+    if (HeldTimer > 20)
+    {
+        HeldTimer = 0;
+    }
+
+    if (HeldTimer == 0)
+    {
+        if (XPos > 5)
+        {
+            if (PlayerCount < 4)
+            {
+                PlayerCount++;
+            }
+            
+            HeldTimer++;
+        }
+        else if (XPos < -5)
+        {
+            if (PlayerCount > 1)
+            {
+                PlayerCount--;
+            }
+
+            
+            HeldTimer++;
+        }
+    }
+
+    if ( ((XPos < 0.20f) && (XPos > -0.20f)) && ((YPos < 0.20f) && (YPos < 0.20f)) )
+    {
+        HeldTimer = 0;
+    }
     else
-        theta += vel;
+    {
+        HeldTimer++;
+    }
 
-    /* Change the pending check when the Z button is pushed */
-    if (contdata[0].trigger & Z_TRIG)
-        pendflag ^= 1;
-
+    if (contdata[0].trigger & A_BUTTON)
+    { 
+        
+        /* Remove the call-back function.*/
+        nuGfxFuncRemove();
+        InitNewGame();
+        /* Specify next stage to main */
+        stage = 0;
+        
+    }
     /* Move to stage 0 when the start button is pushed */
     if (contdata[0].trigger & START_BUTTON)
     {
-        /* Remove the call-back function.*/
-        nuGfxFuncRemove();
-        /* Specify next stage to main */
-        stage = 0;
+            /* Remove the call-back function.*/
+            nuGfxFuncRemove();
+            InitNewGame();
+            /* Specify next stage to main */
+            stage = 0;
+        
     }
+
 }

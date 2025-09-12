@@ -4,12 +4,12 @@
 
 .balign 16
 glabel _miditableSegmentRomStart
-.incbin "wave.tbl"
+.incbin "GenMidiBank.tbl"
 glabel _miditableSegmentRomEnd
 
 .balign 16
 glabel _midibankSegmentRomStart
-.incbin "wave.ctl"
+.incbin "GenMidiBank.ctl"
 glabel _midibankSegmentRomEnd
 
 .balign 16
@@ -24,5 +24,5 @@ glabel _sfxtableSegmentRomEnd
 
 .balign 16
 glabel _seqSegmentRomStart
-.incbin "midi.sbk"
+.incbin "songs.sbk"
 glabel _seqSegmentRomEnd

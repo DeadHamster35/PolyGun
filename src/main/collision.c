@@ -2,6 +2,7 @@
 #include <nualsgi_n.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <float.h>
 #include "main.h"
 #include "math.h"
 #include "common.h"
@@ -13,6 +14,13 @@ CompactCollision*       CollisionBuffer;
 CollisionGridHolster*   GridHolster;
 ushort*                 GridArray;
 uint CollisionCount;
+
+
+Vector Intersect, FinalHit;
+float Distance, ClosestHit;
+short HitTriangle;
+Vector MidPoint;
+Cylinder CheckCylinder;
 
 typedef struct
 {
@@ -481,10 +489,6 @@ int CheckXZ(Vector Center, ushort ThisTri)
 
     if (Product[0] == 0)
     {
-        //Negative Result
-        //Secondary Check Alpha
-        
-    
         if ((Product[1]*Product[2]) < 0)
         {
             HitResult = 0;
@@ -722,6 +726,7 @@ bool PlayerLevelCollision(int Index)
 
     int GArrayPointer, GCount;
     int GIndex = GetGridIndex(TestSphere);    
+
     
     if (GIndex < 0)
     {
@@ -732,7 +737,6 @@ bool PlayerLevelCollision(int Index)
         GArrayPointer = GridHolster->GridData[GIndex].ElementIndex;
         GCount = GridHolster->GridData[GIndex].ElementCount;
     }
-
 
     for (int ThisElement = 0; ThisElement < GCount; ThisElement++)
     {
@@ -1031,41 +1035,40 @@ float intersectLineTriangle(Vector Start, Vector End, VertexArray Face, Vector I
     float a, f, u, v;
 
     // Calculate vectors
-    for (int i = 0; i < 3; i++) {
-        VectorSubtractS(Face[1], Face[0], E1);
-        VectorSubtractS(Face[2], Face[0], E2);
-        VectorSubtract(End, Start, S);
-        VectorCrossProduct(S, E2, H);
-        a = VectorDotProduct(E1, H);
+    VectorSubtractS(Face[1], Face[0], E1);
+    VectorSubtractS(Face[2], Face[0], E2);
+    VectorSubtract(End, Start, S);
+    VectorCrossProduct(S, E2, H);
+    a = VectorDotProduct(E1, H);
 
-        if (a > -EPSILON && a < EPSILON)
-            return FALSE;
+    if (a > -EPSILON && a < EPSILON)
+        return 0.0f;
 
-        f = 1.0 / a;
-        VectorSubtractFS(Start, Face[0], Q);
-        u = f * VectorDotProduct(Q, H);
+    f = 1.0 / a;
+    VectorSubtractFS(Start, Face[0], Q);
+    u = f * VectorDotProduct(Q, H);
 
-        if (u < 0.0 || u > 1.0)
-            return FALSE;
+    if (u < 0.0 || u > 1.0)
+        return 0.0f;
 
-        VectorCrossProduct(Q, E1, H);
-        v = f * VectorDotProduct(S, H);
+    VectorCrossProduct(Q, E1, H);
+    v = f * VectorDotProduct(S, H);
 
-        if (v < 0.0 || u + v > 1.0)
-            return FALSE;
+    if (v < 0.0 || u + v > 1.0)
+        return 0.0f;
 
-        // Calculate the intersection point
-        float t = f * VectorDotProduct(E2, H);
+    // Calculate the intersection point
+    float t = f * VectorDotProduct(E2, H);
 
-        if ((t > EPSILON) && (t <= 1.0f)) {
-            Intersect[0] = Start[0] + t * S[0];
-            Intersect[1] = Start[1] + t * S[1];
-            Intersect[2] = Start[2] + t * S[2];
-            return t;
-        } else {
-            return FALSE;
-        }
+    if ((t > EPSILON) && (t <= 1.0f)) {
+        Intersect[0] = Start[0] + t * S[0];
+        Intersect[1] = Start[1] + t * S[1];
+        Intersect[2] = Start[2] + t * S[2];
+        return t;
+    } else {
+        return 0.0f;
     }
+    
 }
 
 
@@ -1170,11 +1173,96 @@ float intersectRayCylinder(Vector start, Vector end, const Cylinder* cylinder, V
 }
 
 
-Vector Intersect, FinalHit, TestLocation;
-float Distance, ClosestHit;
-short HitTriangle;
-Vector MidPoint;
-Cylinder CheckCylinder;
+short ProjectileLevelCollision(Vector Start, Vector End, int GIndex)
+{
+    //Do NOT reset ClosestHit - This allows for comparing against existing target. 
+    //Triangle test will return only for triangles inbetween player and target.
+    int GArrayPointer, GCount;
+    
+    if (GIndex < 0)
+    {
+        GCount = 0;
+    }
+    else
+    {
+        GArrayPointer = GridHolster->GridData[GIndex].ElementIndex;
+        GCount = GridHolster->GridData[GIndex].ElementCount;
+    }
+    
+
+    short LocalHit = -1;
+    float LocalDistance = 99999999.0f;
+    for (int ThisElement = 0; ThisElement < GCount; ThisElement++)
+    {
+        ushort ThisTri = GridArray[GArrayPointer + ThisElement];
+        
+        Distance = intersectLineTriangle(Start, End, CollisionBuffer[ThisTri].Vertex, Intersect);
+        
+        if ((Distance > 0) && (Distance < ClosestHit))
+        {
+            ClosestHit = Distance;
+            LocalHit = ThisTri;
+            FinalHit[0] = Intersect[0];
+            FinalHit[1] = Intersect[1];
+            FinalHit[2] = Intersect[2];
+        }
+    }
+
+    return LocalHit;
+}
+
+
+short RaycastDDA(Vector start, Vector end) {
+    
+    int  og  = GetGridIndex(start);
+    int  tg  = GetGridIndex(end);
+    short hit;
+
+    // Early hit in start‐cell
+    if (og >= 0 && (hit = ProjectileLevelCollision(start, end, og)) >= 0)
+        return hit;
+
+    if (og == tg || (end[0] == start[0] && end[1] == start[1]))
+        return -1;
+
+    // Direction & initial cell coords
+    float dx    = end[0] - start[0];
+    float dy    = end[1] - start[1];
+    int   x     = (start[0] - GridHolster->GridMin[0]) / GridHolster->ChunkWidth;
+    int   y     = (start[1] - GridHolster->GridMin[1]) / GridHolster->ChunkLength;
+    int   sx    = (dx  > 0) - (dx  < 0);
+    int   sy    = (dy  > 0) - (dy  < 0);
+
+    // Precompute step increments
+    float tDeltaX = dx ? GridHolster->ChunkWidth  / MathABS(dx) : FLT_MAX;
+    float tDeltaY = dy ? GridHolster->ChunkLength / MathABS(dy) : FLT_MAX;
+    float tMaxX   = dx
+                  ? (((sx > 0 ? x + 1 : x) * GridHolster->ChunkWidth  + GridHolster->GridMin[0] - start[0]) / dx)
+                  : FLT_MAX;
+    float tMaxY   = dy
+                  ? (((sy > 0 ? y + 1 : y) * GridHolster->ChunkLength + GridHolster->GridMin[1] - start[1]) / dy)
+                  : FLT_MAX;
+
+    // Traverse until out of bounds or we reach target cell
+    while (x >= 0 && x < 32 && y >= 0 && y < 32) {
+        if (tMaxX < tMaxY) {
+            x++;
+            tMaxX += tDeltaX;
+        } else {
+            y++;
+            tMaxY += tDeltaY;
+        }
+
+        int idx = (x * 32) + y;
+        if (idx == tg) break;
+        if ((hit = ProjectileLevelCollision(start, end, idx)) >= 0)
+            return hit;
+    }
+
+    return -1;
+}
+
+
 
 void AdjustVelocityTriangle(Vector StartVelocity, Vector NormalDirection, Vector AdjustVelocity) {
     // Project the velocity onto the plane defined by the triangle's normal
@@ -1303,50 +1391,12 @@ void PlayerLevelCollisionB(int PlayerIndex)
 
 }
 
-int CheckViewCone(int PlayerIndex)
+int CheckViewCone(float* TargetDistance, int PlayerIndex, float Eyesight)
 {
-    ClosestHit = 99999.0f;
-    Distance = ClosestHit + 1.0f;
-    Vector Eye;
-    Eye[0] = 0;
-    Eye[1] = 1000;
-    Eye[2] = 0;
-
-    AlignXVector(Eye, GameCameras[PlayerIndex].Location.Angle[0]);
-    AlignYVector(Eye, GameCameras[PlayerIndex].Location.Angle[1]);
-    AlignZVector(Eye, GameCameras[PlayerIndex].Location.Angle[2]);
-
-    Eye[0] += GameCameras[PlayerIndex].Location.Position[0];
-    Eye[1] += GameCameras[PlayerIndex].Location.Position[1];
-    Eye[2] += GameCameras[PlayerIndex].Location.Position[2];
-    int Hit = -1;
-    
-    for (int ThisPlayer = 0; ThisPlayer < PlayerCount + BotCount; ThisPlayer++)
-    {
-        if (PlayerIndex == ThisPlayer)
-        {
-            //you can't see yourself.
-            continue;
-        }
-
-        Player *LocalPlayer = (Player*)&GamePlayers[ThisPlayer];
-
-        
-        CheckCylinder.Radius = LocalPlayer->Location.Radius * 1.5f;
-        CheckCylinder.Height = LocalPlayer->Height * 1.5f;
-        CheckCylinder.Base[0] = LocalPlayer->Location.Position[0];
-        CheckCylinder.Base[1] = LocalPlayer->Location.Position[1];
-        CheckCylinder.Base[2] = LocalPlayer->Location.Position[2] - (LocalPlayer->Height * 0.25f);
-
-        Distance = (intersectRayCylinder(GameCameras[PlayerIndex].Location.Position, Eye,(Cylinder*)&CheckCylinder, Intersect));
-        if ((Distance > 0) && (Distance < ClosestHit))
-        {
-            ClosestHit = Distance;
-            Hit = ThisPlayer;
-        }
-    }
-    return Hit;
+    return -1;
 }
+
+
 
 void CheckProjectileCollision(int BulletIndex) 
 {
@@ -1401,6 +1451,12 @@ void CheckProjectileCollision(int BulletIndex)
             //you can't shoot yourself.
             continue;
         }
+        Player* Target = (Player*)(&GamePlayers[ThisPlayer]);
+        if (Target->StatusBits & STATUSDEAD)
+        {
+            //Ignore dead players for now.
+            continue;            
+        }
         
         //XY Axis
         for (int ThisVector = 0; ThisVector < 2; ThisVector++)
@@ -1438,7 +1494,7 @@ void CheckProjectileCollision(int BulletIndex)
         CheckCylinder.Base[0] = LocalPlayer->Location.Position[0];
         CheckCylinder.Base[1] = LocalPlayer->Location.Position[1];
         CheckCylinder.Base[2] = LocalPlayer->Location.Position[2];
-        CheckCylinder.Radius = LocalPlayer->Location.Radius + 5.0f;
+        CheckCylinder.Radius = LocalPlayer->Location.Radius;
         CheckCylinder.Height = LocalPlayer->Height;
 
         Distance = (intersectRayCylinder(LocalBullet->Location.LastPosition, LocalBullet->Location.Position,(Cylinder*)&CheckCylinder, Intersect));
@@ -1454,80 +1510,311 @@ void CheckProjectileCollision(int BulletIndex)
 
 
     //Triangle Test
-    //Do NOT reset ClosestHit - This allows for comparing against existing target. 
-    //Triangle test will return only for triangles inbetween player and target.
-
-    int GArrayPointer, GCount;
-    int GIndex = GetGridIndex(MidPoint);    
     
-    if (GIndex < 0)
-    {
-        GCount = 0;
-    }
-    else
-    {
-        GArrayPointer = GridHolster->GridData[GIndex].ElementIndex;
-        GCount = GridHolster->GridData[GIndex].ElementCount;
-    }
+    
+    float DistanceHit = 0.0f;
 
+    //ahhh shit
+    short HitTriangle = RaycastDDA(LocalBullet->Location.LastPosition, LocalBullet->Location.Position);
 
-    for (int ThisElement = 0; ThisElement < GCount; ThisElement++)
-    {
-        ushort ThisTri = GridArray[GArrayPointer + ThisElement];
-        for (int ThisVector = 0; ThisVector < 3; ThisVector++)
-        {            
-            if (MidPoint[ThisVector] - BulletRadi > CollisionBuffer[ThisTri].BoundingMax[ThisVector])
-            {
-                goto SkipTriangleLineTest;
-            }
-            if (MidPoint[ThisVector] + BulletRadi < CollisionBuffer[ThisTri].BoundingMin[ThisVector])
-            {
-                goto SkipTriangleLineTest;
-            }
-        }
-
-        Distance = intersectLineTriangle(LocalBullet->Location.LastPosition, LocalBullet->Location.Position, CollisionBuffer[ThisTri].Vertex, Intersect);
-        if ((Distance != 0) && (Distance < ClosestHit))
-        {
-            ClosestHit = Distance;
-            HitTriangle = ThisTri;
-            FinalHit[0] = Intersect[0];
-            FinalHit[1] = Intersect[1];
-            FinalHit[2] = Intersect[2];
-        }
-
-        SkipTriangleLineTest:
-    }
 
     
     if (HitTriangle >= 0)
     {
-        LocalBullet->Status = BULLET_INACTIVE;
-        //If Triangle Hit is true, distance is less than distance to any potential player.
+        if (HitPlayer >= 0)
+        {
+            if (Distance < DistanceHit)
+            {
+                
+                LocalBullet->Status = BULLET_HIT;
+                LocalBullet->Lifespan = 0;
+                DamagePlayer(HitPlayer, LocalBullet->Damage);
+                return;
+            }
+        }
+        
+        LocalBullet->Status = BULLET_HIT;
+        LocalBullet->Lifespan = 0;
+        LocalBullet->Location.Position[0] = FinalHit[0];
+        LocalBullet->Location.Position[1] = FinalHit[1];
+        LocalBullet->Location.Position[2] = FinalHit[2];
         return;
     }
     if (HitPlayer >= 0)
     {        
-        //Can only return true if no triangles were hit closer to target. 
-        LocalBullet->Status = BULLET_INACTIVE;
-        int BleedThrough = LocalBullet->Damage - GamePlayers[HitPlayer].HealthData.Shield;
-        if (GamePlayers[HitPlayer].HealthData.Shield > 0)
-        {
-            GamePlayers[HitPlayer].HealthData.Shield -= LocalBullet->Damage;
-        }
-        if (BleedThrough > 0)
-        {
-            GamePlayers[HitPlayer].HealthData.Health -= BleedThrough;
-        }
-
-        if (GamePlayers[HitPlayer].HealthData.Health <= 0)
-        {
-            GameBots[HitPlayer].Difficulty++;
-            initPlayer(HitPlayer);
-        }
+        LocalBullet->Status = BULLET_HIT;
+        LocalBullet->Lifespan = 0;
+        DamagePlayer(HitPlayer, LocalBullet->Damage);
     }
 
 
     
     
 }
+
+
+
+
+bool PlayerLevelCollisionC(int Index)
+{
+    bool AnyHit = false;
+    Vector TestCenter;
+    Vector TestSize;
+    Vector TotalPush[4];        
+
+    for (int ThisVec = 0; ThisVec < 4; ThisVec++)
+    {
+        TotalPush[ThisVec][0] = 0.0f;
+        TotalPush[ThisVec][1] = 0.0f;
+        TotalPush[ThisVec][2] = 0.0f;
+    }
+
+
+    GamePlayers[Index].HitTri[0] = -1;
+    GamePlayers[Index].HitTri[1] = -1;
+    GamePlayers[Index].HitTri[2] = -1;
+    GamePlayers[Index].HitTri[3] = -1;
+    
+    TestSize[0] = GamePlayers[Index].Location.Radius;
+    TestSize[1] = TestSize[0];
+    TestSize[2] = (GamePlayers[Index].Height * 0.5f) ;
+
+    // Foot‐sphere center
+    TestCenter[0] = GamePlayers[Index].Location.Position[0];
+    TestCenter[1] = GamePlayers[Index].Location.Position[1];
+    TestCenter[2] = GamePlayers[Index].Location.Position[2] + GamePlayers[Index].Height * 0.5f;
+
+
+    // fetch grid cell
+    int GArrayPointer, GCount;
+    int GIndex = GetGridIndex(TestCenter);
+    if (GIndex < 0) {
+        GCount = 0;
+    } else {
+        GArrayPointer = GridHolster->GridData[GIndex].ElementIndex;
+        GCount        = GridHolster->GridData[GIndex].ElementCount;
+    }
+
+    // iterate candidates
+    for (int e = 0; e < GCount; e++)
+    {
+        ushort ThisTri = GridArray[GArrayPointer + e];
+        CompactCollision* cc = &CollisionBuffer[ThisTri];
+
+
+        // narrow‐phase: project & point‐in‐tri
+        int HitResult = -1;
+        switch (cc->NormalDirection)
+        {
+            case XAXISVECTOR: HitResult = CheckYZ(TestCenter, ThisTri); break;
+            case YAXISVECTOR: HitResult = CheckXZ(TestCenter, ThisTri); break;
+            case CEILINGVECTOR:            
+                HitResult = CheckXY(TestCenter, ThisTri);
+                break;
+        }
+
+        if (HitResult > 0)
+        {
+            
+            // signed distance from center to triangle’s plane:
+            float planeDist =
+                cc->Normal[0]*TestCenter[0] +
+                cc->Normal[1]*TestCenter[1] +
+                cc->Normal[2]*TestCenter[2] +
+                cc->VectorDistance;
+
+            // pick the radius along this face’s axis:
+            short Dir = cc->NormalDirection;
+            if (Dir > 2)
+            {
+                Dir = 2;
+            }
+            float slabRadius = TestSize[Dir];
+
+            // collide as soon as center lies within ±slabRadius of the plane
+            if (planeDist >= -slabRadius && planeDist <=  slabRadius)
+            {
+                int dir = cc->NormalDirection;
+                float pen = slabRadius - MathABS(planeDist);
+
+                // record penetration exactly as you do now
+                GamePlayers[Index].HitTri[dir] = ThisTri;
+                TotalPush[dir][0] += cc->Normal[0] * pen;
+                TotalPush[dir][1] += cc->Normal[1] * pen;
+                TotalPush[dir][2] += cc->Normal[2] * pen;
+
+
+                
+                if (dir == CEILINGVECTOR)
+                {
+                    if (GamePlayers[Index].Location.VelocityFront[2] < 0.0f)
+                        GamePlayers[Index].Location.VelocityFront[2] = 0.0f;
+                    GamePlayers[Index].Location.Position[2] -= 0.1f;
+                }
+
+                // skip your old projRadius‐based code entirely
+                continue;
+            }
+
+
+            // compute projection of your 3‐axis shape onto this triangle's normal
+            float projRadius =
+                MathABS(cc->Normal[0]) * TestSize[0] +
+                MathABS(cc->Normal[1]) * TestSize[1] +
+                MathABS(cc->Normal[2]) * TestSize[2];
+
+            // signed‐distance minus your shape‐radius in that direction
+            float pd =
+                cc->Normal[0]*TestCenter[0] +
+                cc->Normal[1]*TestCenter[1] +
+                cc->Normal[2]*TestCenter[2] +
+                cc->VectorDistance
+                - projRadius;
+
+            // only consider shallow penetrations
+            if ((pd < 0.0f) && (pd > -1.001f * projRadius))
+            {
+                int dir = cc->NormalDirection;
+                float pen = -pd;   // positive penetration depth
+                GamePlayers[Index].HitTri[dir] = ThisTri;
+                
+                TotalPush[dir][0] += cc->Normal[0] * pen;
+                TotalPush[dir][1] += cc->Normal[1] * pen;
+                TotalPush[dir][2] += cc->Normal[2] * pen;
+
+                
+
+                if (dir == CEILINGVECTOR)
+                {
+                    if (GamePlayers[Index].Location.VelocityFront[2] < 0.0f)
+                    {
+                        GamePlayers[Index].Location.VelocityFront[2] = 0.0f;
+                    }
+                        
+                    // prevent sphere from sitting in ceiling
+                    GamePlayers[Index].Location.Position[2] -= 0.1f;
+                }
+                
+                
+            }
+        }
+
+    }
+
+    for (int ThisVec = 0; ThisVec < 4; ThisVec++)
+    {
+        GamePlayers[Index].Location.Position[0] += TotalPush[ThisVec][0];
+        GamePlayers[Index].Location.Position[1] += TotalPush[ThisVec][1];
+        GamePlayers[Index].Location.Position[2] += TotalPush[ThisVec][2];
+    }
+
+    TestCenter[0] = GamePlayers[Index].Location.Position[0];
+    TestCenter[1] = GamePlayers[Index].Location.Position[1];
+    TestCenter[2] = GamePlayers[Index].Location.Position[2] + GamePlayers[Index].Height * 0.5f;
+    for (int e = 0; e < GCount; e++)
+    {
+        ushort ThisTri = GridArray[GArrayPointer + e];
+        CompactCollision* cc = &CollisionBuffer[ThisTri];
+
+
+        // narrow‐phase: project & point‐in‐tri
+        int HitResult = -1;
+        switch (cc->NormalDirection)
+        {
+            case FLOORVECTOR:            
+                HitResult = CheckXY(TestCenter, ThisTri);
+                break;
+        }
+
+        if (HitResult > 0)
+        {
+            
+            // signed distance from center to triangle’s plane:
+            float planeDist =
+                cc->Normal[0]*TestCenter[0] +
+                cc->Normal[1]*TestCenter[1] +
+                cc->Normal[2]*TestCenter[2] +
+                cc->VectorDistance;
+
+            // pick the radius along this face’s axis:
+            short Dir = 2;
+
+            float slabRadius = TestSize[Dir];
+
+            // collide as soon as center lies within ±slabRadius of the plane
+            if (planeDist >= -slabRadius && planeDist <=  slabRadius)
+            {
+                int dir = cc->NormalDirection;
+                float pen = slabRadius - MathABS(planeDist);
+
+                // record penetration exactly as you do now
+                GamePlayers[Index].HitTri[dir] = ThisTri;
+                TotalPush[dir][0] += cc->Normal[0] * pen;
+                TotalPush[dir][1] += cc->Normal[1] * pen;
+                TotalPush[dir][2] += cc->Normal[2] * pen;
+
+
+                if (GamePlayers[Index].Location.VelocityFront[2] > 0.0f)
+                {
+                    GamePlayers[Index].Location.VelocityFront[2] = 0.0f;
+                }
+                
+                AnyHit = true;
+                // skip your old projRadius‐based code entirely
+                continue;
+            }
+
+
+            // compute projection of your 3‐axis shape onto this triangle's normal
+            float projRadius =
+                MathABS(cc->Normal[0]) * TestSize[0] +
+                MathABS(cc->Normal[1]) * TestSize[1] +
+                MathABS(cc->Normal[2]) * TestSize[2];
+
+            // signed‐distance minus your shape‐radius in that direction
+            float pd =
+                cc->Normal[0]*TestCenter[0] +
+                cc->Normal[1]*TestCenter[1] +
+                cc->Normal[2]*TestCenter[2] +
+                cc->VectorDistance
+                - projRadius;
+
+            // only consider shallow penetrations
+            if ((pd < 0.0f) && (pd > -1.001f * projRadius))
+            {
+                int dir = cc->NormalDirection;
+                float pen = -pd;   // positive penetration depth
+                GamePlayers[Index].HitTri[dir] = ThisTri;
+                
+                TotalPush[dir][0] += cc->Normal[0] * pen;
+                TotalPush[dir][1] += cc->Normal[1] * pen;
+                TotalPush[dir][2] += cc->Normal[2] * pen;
+
+                AnyHit = true;
+            
+            
+                if (GamePlayers[Index].Location.VelocityFront[2] > 0.0f)
+                {
+                    GamePlayers[Index].Location.VelocityFront[2] = 0.0f;
+                }
+                
+                
+            }
+        }
+
+    }
+
+    GamePlayers[Index].Location.Position[0] += TotalPush[FLOORVECTOR][0];
+    GamePlayers[Index].Location.Position[1] += TotalPush[FLOORVECTOR][1];
+    GamePlayers[Index].Location.Position[2] += TotalPush[FLOORVECTOR][2];
+    
+    
+    return AnyHit;
+
+}
+
+
+
+
+
+

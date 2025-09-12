@@ -163,11 +163,17 @@ void UpdateBotControls()
         BotStruct* LocalBot = (BotStruct*)&GameBots[ThisPlayer];
         Actor* LocalActor = (Actor*)LocalBot->ActorData;
 
-        float OptimalDistance = ((float)LocalActor->FireDistance.Min + (float)LocalActor->FireDistance.Max) * 0.5f;
+        
+
         if (!LocalPlayer->IsCPU)
         {
             //Don't run controller for Human Players
-            return;
+            continue;
+        }
+        if (LocalPlayer->StatusBits & STATUSDEAD)
+        {
+            //Don't run controller for Dead Players
+            continue;
         }
 
         Player* TargetPlayer = (Player*)&GamePlayers[LocalPlayer->PlayerTarget];
@@ -209,7 +215,7 @@ void UpdateBotControls()
         CheckDistance = GetDistance(LocalBot->CurrentTarget, TargetPlayer->Location.Position);
         if ((CheckDistance > LocalBot->ActorData->FireDistance.Max) || (CheckDistance < LocalBot->ActorData->FireDistance.Min))
         {
-            GetMoveDistance(ThisPlayer, OptimalDistance);
+            GetMoveDistance(ThisPlayer, LocalActor->OptimalDistance);
         }
         
         
@@ -242,7 +248,7 @@ void UpdateBotControls()
             if (LocalBot->MovementStress > 120)
             {
                 LocalBot->MovementStress = 0;
-                GetMoveDistance(ThisPlayer, OptimalDistance);
+                GetMoveDistance(ThisPlayer, LocalActor->OptimalDistance);
             }
         }
         else
@@ -252,7 +258,7 @@ void UpdateBotControls()
             if (LocalBot->MovementStress > 45)
             {
                 LocalBot->MovementStress = 0;
-                GetMoveDistance(ThisPlayer, OptimalDistance);
+                GetMoveDistance(ThisPlayer, LocalActor->OptimalDistance);
             }
         }
         

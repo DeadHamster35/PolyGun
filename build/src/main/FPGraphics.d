@@ -27,7 +27,7 @@ build/src/main/FPGraphics.o: src/main/FPGraphics.c \
  /usr/include/n64/PR/ultraerror.h /usr/include/n64/PR/ultralog.h \
  /usr/include/n64/PR/gs2dex.h /usr/include/n64/nusys/nualsgi_n.h \
  /usr/include/n64/nusys/nualsgi.h /usr/include/n64/PR/n_libaudio.h \
- /usr/include/n64/PR/n_libaudio_s_to_n.h include/common.h \
+ /usr/include/n64/PR/n_libaudio_s_to_n.h src/main/main.h include/common.h \
  include/../src/main/assets/assets.h include/../src/main/assets/assets.h \
  include/../src/main/assets/animations/assaultrifle/AR_Fire_Anime.h \
  include/../src/main/assets/animations/assaultrifle/AR_Idle_Anime.h \
@@ -40,26 +40,38 @@ build/src/main/FPGraphics.o: src/main/FPGraphics.c \
  include/../src/main/assets/animations/humanpistol/HP_Melee_Anime.h \
  include/../src/main/assets/animations/humanpistol/HP_ReloadFull_Anime.h \
  include/../src/main/assets/animations/humanpistol/HP_Reload_Empty_Anime.h \
+ include/../src/main/assets/animations/plasmarifle/PlasmaRifle_Fire_Anime.h \
+ include/../src/main/assets/animations/plasmarifle/PlasmaRifle_Idle_Anime.h \
+ include/../src/main/assets/animations/plasmarifle/PlasmaRifle_Melee_Anime.h \
+ include/../src/main/assets/animations/plasmarifle/PlasmaRifle_Overheat_Anime.h \
  include/../src/main/assets/models/DebugCylinder_HitBox_Model.h \
  include/../src/main/assets/models/assaultrifle/Assault_Rifle_Model.h \
+ include/../src/main/assets/models/cyborg/ShieldBox_Model.h \
+ include/../src/main/assets/models/cyborg/Shield_Texture.h \
  include/../src/main/assets/models/debugcube/blackwhitechecker_Texture.h \
  include/../src/main/assets/models/debugcube/DebugCube_Model.h \
  include/../src/main/assets/models/debugcube/Sphere001_Model.h \
  include/../src/main/assets/models/FPArms/LeftArm_Model.h \
  include/../src/main/assets/models/humanpistol/HumanPistol_Model.h \
+ include/../src/main/assets/models/plasmarifle/PlasmaRifle_Model.h \
  include/../src/main/assets/textures/assaultrifle/AR_Color_Texture.h \
  include/../src/main/assets/textures/assaultrifle/ar_Texture.h \
- include/../src/main/assets/textures/cubemap/Cube3_Texture.h \
- include/../src/main/assets/textures/cubemap/cube4_Texture.h \
- include/../src/main/assets/textures/cubemap/cubemap_Texture.h \
- include/../src/main/assets/textures/cubemap/cubey_Texture.h \
- include/../src/main/assets/textures/cubemap/mariocube2_Texture.h \
- include/../src/main/assets/textures/cubemap/MarioCube_Texture.h \
- include/../src/main/assets/textures/cubemap/rainbow2_Texture.h \
- include/../src/main/assets/textures/cubemap/rainbow3_Texture.h \
- include/../src/main/assets/textures/cubemap/rainbow_Texture.h \
  include/../src/main/assets/textures/FPArms/CyborgTP_Texture.h \
+ include/../src/main/assets/textures/HUD/AmmoBar_Texture.h \
+ include/../src/main/assets/textures/HUD/ASCII_Texture.h \
+ include/../src/main/assets/textures/HUD/NumberPlate_Texture.h \
+ include/../src/main/assets/textures/HUD/oldASCII_Texture.h \
+ include/../src/main/assets/textures/HUD/Radar_Texture.h \
  include/../src/main/assets/textures/HUD/ShieldHealthbar_Texture.h \
+ include/../src/main/assets/textures/HUD/Icons/IconHUD_AR_Texture.h \
+ include/../src/main/assets/textures/HUD/Icons/IconHUD_Pistol_Texture.h \
+ include/../src/main/assets/textures/HUD/Icons/IconHUD_PlasmaRifle_Texture.h \
+ include/../src/main/assets/textures/HUD/Reticles/Reticle_AR_Texture.h \
+ include/../src/main/assets/textures/HUD/Reticles/Reticle_HP_Texture.h \
+ include/../src/main/assets/textures/HUD/Reticles/Reticle_PR_Texture.h \
  include/../src/main/assets/textures/humanpistol/pistol_color_Texture.h \
  include/../src/main/assets/textures/humanpistol/Pistol_Texture.h \
- src/main/graphic.h src/main/HUD.h
+ include/../src/main/assets/textures/plasmarifle/PlasmaRifleColor_Texture.h \
+ include/../src/main/assets/textures/plasmarifle/PlasmaRifle_Texture.h \
+ src/main/graphic.h src/main/HUD.h src/main/player.h src/main/weapon.h \
+ src/main/levels.h

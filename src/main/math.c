@@ -17,6 +17,25 @@ float cost(ushort angle)
 	return(costable[angle>>4]);    
 }
 
+
+float tandy(float Input) {
+    float sin_val;
+    float cos_val;
+    float tan_val;
+
+    // Calculate sine and cosine
+    sin_val = (float)(sint(Input) / DEG1);
+    cos_val = (float)(cost(Input) / DEG1);
+
+    // Compute the tangent using the quotient identity
+    if (cos_val != 0) {
+        tan_val = sin_val / cos_val;
+    } else {
+        tan_val = 0.0f; // Assign a very large value to indicate overflow
+    }
+    return tan_val;
+}
+
 ushort atant(float a, float b)
 {
 	ushort angle;
@@ -50,14 +69,8 @@ ushort atant(float a, float b)
     return atntable[0];
 }
 
-typedef union {
-	long	word;
-	short	half[2];
-	char	byte[4];	
-} SPacked;
 
-
-ushort atan2(float y, float x)
+ushort atan3(float y, float x)
 {
 	ushort angle;
 	if (y >= 0) 
@@ -122,7 +135,13 @@ ushort atan2(float y, float x)
 }
 
 
-void AffineToMtx(Mtx *Matrix, AffineMtx Affine)
+
+typedef union {
+	long	word;
+	short	half[2];
+	char	byte[4];	
+} SPacked;
+void AffineToMtx(AffineMtx Affine, Mtx *Matrix)
 {	
 	SPacked data;
 	register int	count;
@@ -139,98 +158,102 @@ void AffineToMtx(Mtx *Matrix, AffineMtx Affine)
 }
 
 
-void CreateModelMatrix(AffineMtx Matrix, Vector Position, SVector Angle)
-{
-    float sinA = sint(Angle[0]);
-    float cosA = cost(Angle[0]);
-    float sinB = sint(Angle[1]);
-    float cosB = cost(Angle[1]);
-    float sinC = sint(Angle[2]);
-    float cosC = cost(Angle[2]);
 
-    Matrix[0][0] =  cosB * cosC + sinA * sinB * sinC;
-    Matrix[1][0] = -cosB * sinC + sinA * sinB * cosC;
-    Matrix[2][0] =  cosA * sinB;
-    Matrix[3][0] =  (float)Position[0];
-               
-    Matrix[0][1] =  cosA * sinC;
-    Matrix[1][1] =  cosA * cosC;
-    Matrix[2][1] = -sinA;
-    Matrix[3][1] =  (float)Position[1];
-               
-    Matrix[0][2] = -sinB * cosC + sinA * cosB * sinC;
-    Matrix[1][2] =  sinB * sinC + sinA * cosB * cosC;
-    Matrix[2][2] =  cosA * cosB;
-    Matrix[3][2] =  (float)Position[2];
-               
-    Matrix[0][3] = 0.0f;
-    Matrix[1][3] = 0.0f;
-    Matrix[2][3] = 0.0f;
-    Matrix[3][3] = 1.0f;
+
+
+// Zero + identity
+static void Mtx_Identity(AffineMtx m) {
+    // zero everything
+    for (int r = 0; r < 4; ++r)
+        for (int c = 0; c < 4; ++c)
+            m[r][c] = 0.0f;
+
+    // set diagonal to 1
+    m[0][0] = 1.0f;
+    m[1][1] = 1.0f;
+    m[2][2] = 1.0f;
+    m[3][3] = 1.0f;
+}
+
+// Rotate around Z: affects X,Y columns
+static void Mtx_RotateZ(AffineMtx m, short ang) {
+    float s = sint(ang);
+    float c = cost(ang);
+
+    for (int row = 0; row < 4; ++row) {
+        float x = m[row][0];
+        float y = m[row][1];
+        m[row][0] = x * c - y * s;
+        m[row][1] = x * s + y * c;
+    }
+}
+
+// Rotate around Y: affects X,Z columns
+static void Mtx_RotateY(AffineMtx m, short ang) {
+    float s = sint(ang);
+    float c = cost(ang);
+
+    for (int row = 0; row < 4; ++row) {
+        float x = m[row][0];
+        float z = m[row][2];
+        m[row][0] =  x * c + z * s;
+        m[row][2] = -x * s + z * c;
+    }
+}
+
+// Rotate around X: affects Y,Z columns
+static void Mtx_RotateX(AffineMtx m, short ang) {
+    float s = sint(ang);
+    float c = cost(ang);
+
+    for (int row = 0; row < 4; ++row) {
+        float y = m[row][1];
+        float z = m[row][2];
+        m[row][1] = y * c - z * s;
+        m[row][2] = y * s + z * c;
+    }
 }
 
 
-void CreateModelMatrixS(AffineMtx Matrix, SVector Position, SVector Angle)
+void CreateModelMatrix(AffineMtx dst,Vector pos, SVector ang)
 {
-    float sinA = sint(Angle[0]);
-    float cosA = cost(Angle[0]);
-    float sinB = sint(Angle[1]);
-    float cosB = cost(Angle[1]);
-    float sinC = sint(Angle[2]);
-    float cosC = cost(Angle[2]);
+    Mtx_Identity(dst);
+    
+    Mtx_RotateX(dst, ang[0]);
+    
+    if (ang[1] != 0)
+    {
+        Mtx_RotateY(dst, ang[1]);
+    }
+    
+    Mtx_RotateZ(dst, ang[2]);
 
-    Matrix[0][0] =  cosB * cosC + sinA * sinB * sinC;
-    Matrix[1][0] = -cosB * sinC + sinA * sinB * cosC;
-    Matrix[2][0] =  cosA * sinB;
-    Matrix[3][0] =  (float)Position[0];
-               
-    Matrix[0][1] =  cosA * sinC;
-    Matrix[1][1] =  cosA * cosC;
-    Matrix[2][1] = -sinA;
-    Matrix[3][1] =  (float)Position[1];
-               
-    Matrix[0][2] = -sinB * cosC + sinA * cosB * sinC;
-    Matrix[1][2] =  sinB * sinC + sinA * cosB * cosC;
-    Matrix[2][2] =  cosA * cosB;
-    Matrix[3][2] =  (float)Position[2];
-               
-    Matrix[0][3] = 0.0f;
-    Matrix[1][3] = 0.0f;
-    Matrix[2][3] = 0.0f;
-    Matrix[3][3] = 1.0f;
+    dst[3][0] = pos[0];
+    dst[3][1] = pos[1];
+    dst[3][2] = pos[2];
+
 }
 
-void CreateModelMatrixZ(AffineMtx Matrix, Vector Position, SVector Angle) 
+void CreatePositionMatrix(AffineMtx dst, Vector pos)
 {
-
-    float cosRoll = cost(Angle[0]);
-    float sinRoll = sint(Angle[0]);
-    float cosPitch = cost(Angle[1]);
-    float sinPitch = sint(Angle[1]);
-    float cosYaw = cost(Angle[2]);
-    float sinYaw = sint(Angle[2]);  
+    Mtx_Identity(dst);
+    dst[3][0] = pos[0];
+    dst[3][1] = pos[1];
+    dst[3][2] = pos[2];
+}
 
 
-    // Construct rotation matrix
-    Matrix[0][0] = cosYaw * cosPitch;
-    Matrix[0][1] = cosYaw * sinPitch * sinRoll - sinYaw * cosRoll;
-    Matrix[0][2] = cosYaw * sinPitch * cosRoll + sinYaw * sinRoll;
-    Matrix[0][3] = 0.0f;
-
-    Matrix[1][0] = sinYaw * cosPitch;
-    Matrix[1][1] = sinYaw * sinPitch * sinRoll + cosYaw * cosRoll;
-    Matrix[1][2] = sinYaw * sinPitch * cosRoll - cosYaw * sinRoll;
-    Matrix[1][3] = 0.0f;
-
-    Matrix[2][0] = -sinPitch;
-    Matrix[2][1] = cosPitch * sinRoll;
-    Matrix[2][2] = cosPitch * cosRoll;
-    Matrix[2][3] = 0.0f;
-
-    Matrix[3][0] = Position[0];
-    Matrix[3][1] = Position[1];
-    Matrix[3][2] = Position[2];
-    Matrix[3][3] = 1.0f;
+void MatrixMultiply(AffineMtx out, AffineMtx a, AffineMtx b)
+{
+    for (int row = 0; row < 4; row++) {
+        for (int col = 0; col < 4; col++) {
+            out[row][col] = 
+                a[row][0] * b[0][col] +
+                a[row][1] * b[1][col] +
+                a[row][2] * b[2][col] +
+                a[row][3] * b[3][col];
+        }
+    }
 }
 
 void ScalingMatrix(AffineMtx matrix , float scale)
@@ -336,7 +359,7 @@ float GetDistance(Vector A, Vector B)
 
 short GetDirection(Vector A, Vector B)
 {
-    return (-1 * atan2((B[0] - A[0]),(B[1] - A[1])));
+    return (-1 * atan3((B[0] - A[0]),(B[1] - A[1])));
 }
 
 

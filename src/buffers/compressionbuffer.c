@@ -14,5 +14,5 @@
 #include <nusys.h>
 #include <nualsgi_n.h>
 
-unsigned short CompressionBuffer[76800];    //150k of compressed space
+unsigned short CompressionBuffer[153600];    //300k of compressed space
 unsigned short RawBuffer[447488];            //874kb of buffer space

@@ -12,64 +12,88 @@
 #include "pathfinding.h"
 
 
-LevelHeaderStruct LevelHeader;
+LevelScenario   LoadedScenario;
+PlayerSpawn     SpawnPoints[MAXSPAWNS];
+DynamicPickup   DynamicPickArray[MAXDYNAMICPICKS];
+StaticPickup    StaticPickArray[MAXSTATICPICKS];
 
+ushort      TotalSpawnPoints, TotalStaticPicks;
 int LevelIndex;
 
-
-uint Segment4Start[] = 
-{
-    (uint)&_A30Seg4,
-    (uint)&_RiverBedSeg4,
-    (uint)&_sandcastle4
-};
-uint Segment5Start[] = 
-{
-    (uint)&_A30Seg5,
-    (uint)&_RiverBedSeg5,
-    (uint)&_sandcastle5
-};
-uint Segment6Start[] = 
-{
-    (uint)&_A30Seg6,
-    (uint)&_RiverBedSeg6,
-    (uint)&_sandcastle6
-};
-uint Segment4Ends[] = 
-{
-    (uint)&_A30Seg4END,
-    (uint)&_RiverBedSeg4END,
-    (uint)&_sandcastle4END
-};
-uint Segment5Ends[] = 
-{
-    (uint)&_A30Seg5END,
-    (uint)&_RiverBedSeg5END,
-    (uint)&_sandcastle5END
-};
-uint Segment6Ends[] = 
-{
-    (uint)&_A30Seg6END,
-    (uint)&_RiverBedSeg6END,
-    (uint)&_sandcastle6END
-};
-
+/*
 uint TableAddress[] =   {0x0600E348, 0x06002618, 0x0600BD78};
 uint TableSurface[] =   {0x0600E3B0, 0x060026B0, 0x0600BDB0};
 uint TableGrid[] =      {0x0602B3C0, 0x06027B90, 0x0600DBB0};
 uint SurfaceCount[] =   {0x05CD, 0x776, 0x60};
+*/
 
-
-
-void LoadHeader()
+void LoadScenario(LevelScenario* Target)
 {
-    LevelHeader.Segment4ROM = Segment4Start[LevelIndex];
-    LevelHeader.Segment5ROM = Segment5Start[LevelIndex];
-    LevelHeader.Segment6ROM = Segment6Start[LevelIndex];
+    LoadedScenario.ObjectList = Target->ObjectList;
+    LoadedScenario.Name = Target->Name;
 
-    LevelHeader.Segment4SizeCompressed = Segment4Ends[LevelIndex] - Segment4Start[LevelIndex];
-    LevelHeader.Segment5SizeCompressed = Segment5Ends[LevelIndex] - Segment5Start[LevelIndex];
-    LevelHeader.Segment6SizeCompressed = Segment6Ends[LevelIndex] - Segment6Start[LevelIndex];
+    LoadedScenario.Segment4Address = Target->Segment4Address;    
+    LoadedScenario.Segment5Address = Target->Segment5Address;
+    LoadedScenario.Segment6Address = Target->Segment6Address;
+    LoadedScenario.Segment4Size = Target->Segment4Size;
+    LoadedScenario.Segment5Size = Target->Segment5Size;
+    LoadedScenario.Segment6Size = Target->Segment6Size;
+
+    LoadedScenario.DisplayTableAddress = Target->DisplayTableAddress;
+    LoadedScenario.SurfaceTableAddress = Target->SurfaceTableAddress;
+    LoadedScenario.GridTableAddress = Target->GridTableAddress;
+    LoadedScenario.SurfaceCount = Target->SurfaceCount;
+
+    TotalSpawnPoints = 0;
+    TotalStaticPicks = 0;
+
+    
+    //Load the pickup/objective arrays from the static lists into the RAM allocations.
+    for (int Index = 0; Index < Target->ObjectCount; Index++)
+    {
+        StaticPickup* TargetPick = (StaticPickup*)&Target->ObjectList[Index];
+
+        switch(TargetPick->PickupType)
+        {
+            case PICKUPTYPE_OBJECTIVE:
+            {
+                switch (TargetPick->PickupClass)
+                {
+                    case OBJECTIVECLASS_SPAWN:
+                    {
+                        SpawnPoints[TotalSpawnPoints].Position[0] = TargetPick->Position[0];
+                        SpawnPoints[TotalSpawnPoints].Position[1] = TargetPick->Position[1];
+                        SpawnPoints[TotalSpawnPoints].Position[2] = TargetPick->Position[2];
+
+                        SpawnPoints[TotalSpawnPoints].Angle = TargetPick->Angle[2];
+                        SpawnPoints[TotalSpawnPoints].Gametype = TargetPick->Magazine;
+                        SpawnPoints[TotalSpawnPoints].Team = TargetPick->Ammo;
+                        TotalSpawnPoints++;
+                        break;
+                    }
+                }
+                break;
+            }
+
+            case PICKUPTYPE_WEAPON:
+            {
+                StaticPickArray[TotalStaticPicks].Position[0] = TargetPick->Position[0];
+                StaticPickArray[TotalStaticPicks].Position[1] = TargetPick->Position[1];
+                StaticPickArray[TotalStaticPicks].Position[2] = TargetPick->Position[2];
+
+                StaticPickArray[TotalStaticPicks].Angle[0] = TargetPick->Angle[0];
+                StaticPickArray[TotalStaticPicks].Angle[1] = TargetPick->Angle[1];
+                StaticPickArray[TotalStaticPicks].Angle[2] = TargetPick->Angle[2];
+                
+                StaticPickArray[TotalStaticPicks].PickupType = TargetPick->PickupType;
+                StaticPickArray[TotalStaticPicks].PickupClass = TargetPick->PickupClass;
+                StaticPickArray[TotalStaticPicks].Ammo = TargetPick->Ammo;
+                StaticPickArray[TotalStaticPicks].Magazine = TargetPick->Magazine;
+                TotalStaticPicks++;
+                break;
+            }
+        }
+    }
 }
 
 void LoadLevelData()
@@ -87,50 +111,13 @@ void LoadLevelData()
         MemorySize = 4;
         FreeSpaceAddress = 0x80400000;
     }
-    ReturnAddress = DecompressData(LevelHeader.Segment4ROM, LevelHeader.Segment4SizeCompressed);
+    ReturnAddress = DecompressData(LoadedScenario.Segment4Address, LoadedScenario.Segment4Size);
     SetSegment(4, ReturnAddress);
-    ReturnAddress = DecompressData(LevelHeader.Segment5ROM, LevelHeader.Segment5SizeCompressed);
+    ReturnAddress = DecompressData(LoadedScenario.Segment5Address, LoadedScenario.Segment5Size);
     SetSegment(5, ReturnAddress);
-    ReturnAddress = DecompressData(LevelHeader.Segment6ROM, LevelHeader.Segment6SizeCompressed);
+    ReturnAddress = DecompressData(LoadedScenario.Segment6Address, LoadedScenario.Segment6Size);
     SetSegment(6, ReturnAddress);
     
     
-}
-
-
-void InitNewLevel()
-{
-    RenderEnable = 0;
     
-    //StartMusic//
-    nuAuSeqPlayerSetNo(0,0);
-    nuAuSeqPlayerPlay(0);
-
-
-    //LoadHUD();
-    
-
-    LoadHeader();
-    LoadLevelData();
-      
-
-    //outdated code systems. deprecated. 
-    //collision data is now precompiled
-    /*
-    BuildCollisionBuffer(TableSurface[LevelIndex]);
-    SetSegment(8,(uint)&CollisionBuffer);
-
-    //Build Pathfinding Data
-    BuildNavMesh();
-    */
-    
-    //load collision data from within Segment 6.
-    CollisionBuffer = (CompactCollision*)(GetRealAddress(TableSurface[LevelIndex]));
-    GridHolster = (CollisionGridHolster*)(GetRealAddress(TableGrid[LevelIndex]));
-    GridArray = (ushort*)(GetRealAddress(TableGrid[LevelIndex]) + sizeof(CollisionGridHolster));
-    CollisionCount = SurfaceCount[LevelIndex];
-    InitNavArray();
-
-    GameSequence = LEVELSEQUENCE;
-    RenderEnable = 1;
 }

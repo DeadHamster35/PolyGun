@@ -650,7 +650,8 @@ static PolyBone BodyBone_Bone =
 AnimeHolster AR_Fire =
 {
 	.RootBone = (PolyBone*)&BodyBone_Bone,
-	.FrameCount = 2
+	.FrameCount = 2,
+    .ActionFrame = 0
 };
 
 

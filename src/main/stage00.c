@@ -14,12 +14,13 @@
 #include "weapon.h"
 #include "intelligence.h"
 #include "assets/assets.h"
+#include "FPGraphics.h"
 
 static float triPos_x; /* The display position, X */
 static float triPos_y; /* The display position, Y */
 static float theta;    /* The rotational angle of the square  */
 
-void shadetri(Dynamic *dynamicp);
+
 
 /* The initialization of stage 0  */
 void initStage00(void)
@@ -41,7 +42,7 @@ void makeDL00(void)
     dynamicp = &gfx_dynamic[gfx_gtask_no];
     glistp = &gfx_glist[gfx_gtask_no][0];
 
-    SetSegment(0,0);
+    SetSegment(0,0); 
     SetSegment(2, osVirtualToPhysical(dynamicp));
 
     StoreRSPSegments();
@@ -54,23 +55,48 @@ void makeDL00(void)
     
     osViSetSpecialFeatures(OS_VI_GAMMA_OFF);	     
     osViSetSpecialFeatures(OS_VI_DITHER_FILTER_ON);
-
-    gDPPipeSync(glistp++);
-    gDPSetCycleType(glistp++, G_CYC_1CYCLE);
-    gDPSetRenderMode(glistp++, G_RM_AA_OPA_SURF, G_RM_AA_OPA_SURF2);
+    
 
 
     
+    
+    
+
+
     for (int ThisPlayer = 0; ThisPlayer < PlayerCount; ThisPlayer++)
     {
-        DrawLevelScene(dynamicp,ThisPlayer);
-        
-        DrawHUD(ThisPlayer);
+
+        gDPSetTextureFilter(glistp++, G_TF_BILERP)
         gDPPipeSync(glistp++);
+        gDPSetCycleType(glistp++, G_CYC_1CYCLE);
+        gDPSetRenderMode(glistp++, G_RM_AA_OPA_SURF, G_RM_AA_OPA_SURF2);
+
+
+        DrawLevelScene(dynamicp,ThisPlayer);
+        DrawBullets(ThisPlayer);
+        DrawPlayers(ThisPlayer);                
+        DrawPickups(ThisPlayer);
+        
+    }
+    gDPSetRenderMode(glistp++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
+    //Clear Z-Buffer before drawing FP views.
+    gfxClearZfb();
+    
+    
+    
+    gDPSetCycleType(glistp++, G_CYC_1CYCLE);
+
+    for (int ThisPlayer = 0; ThisPlayer < PlayerCount; ThisPlayer++)
+    {
+        gDPPipeSync(glistp++);        
+        DrawFirstPerson(dynamicp,ThisPlayer);
+
+        gSPClearGeometryMode(glistp++, G_ZBUFFER);
+        DrawHUD(ThisPlayer); 
+        gSPSetGeometryMode(glistp++, G_ZBUFFER);     
     }
     
     
-   
     gDPFullSync(glistp++);
     gSPEndDisplayList(glistp++);
 
@@ -85,9 +111,7 @@ void makeDL00(void)
     nuDebTaskPerfBar0(1, 200, NU_SC_NOSWAPBUFFER);
     
     /* Display the drawing state   */
-    nuDebConTextPos(0, 3, 2);
-    nuDebConCPuts(0, "A30 - Halo");
-    nuDebConTextPos(0, 2, 3);
+    nuDebConTextPos(0, 2, 12);
     sprintf(conbuf, "%2d draw/sec", dspcount);
     nuDebConCPuts(0, conbuf);
 
@@ -101,7 +125,7 @@ void makeDL00(void)
 void updateGame00(void)
 {
     static float vel = 1.0;
-
+    
     nuContDataGetEx((NUContData*)&contdata[0], 0);
     nuContDataGetEx((NUContData*)&contdata[1], 1);
     nuContDataGetEx((NUContData*)&contdata[2], 2);
@@ -115,42 +139,13 @@ void updateGame00(void)
         stage = 1;
     }
 
-
+    
     UpdatePlayerControls();
     UpdateBotControls();
     UpdatePlayerResponse();
     CheckProjectiles();
+    CheckPlayerHealth();
+    
 
 }
 
-/* The vertex coordinate  */
-static Vtx shade_vtx[] = {
-    {-64, 64, -5, 0, 0, 0, 0, 0xff, 0, 0xff},
-    {64, 64, -5, 0, 0, 0, 0, 0, 0, 0xff},
-    {64, -64, -5, 0, 0, 0, 0, 0, 0xff, 0xff},
-    {-64, -64, -5, 0, 0, 0, 0xff, 0, 0, 0xff},
-};
-
-/* Draw a square  */
-void shadetri(Dynamic *dynamicp)
-{
-    int i;
-
-    gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&(dynamicp->LevelMap.Projection)),
-              G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH);
-    gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&(dynamicp->LevelMap.Translation)),
-              G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
-    gSPMatrix(glistp++, OS_K0_TO_PHYSICAL(&(dynamicp->LevelMap.Rotation)),
-              G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_NOPUSH);
-
-    gSPVertex(glistp++, &(shade_vtx[0]), 4, 0);
-
-    gDPPipeSync(glistp++);
-    gDPSetCycleType(glistp++, G_CYC_1CYCLE);
-    gDPSetRenderMode(glistp++, G_RM_AA_OPA_SURF, G_RM_AA_OPA_SURF2);
-    gSPClearGeometryMode(glistp++, 0xFFFFFFFF);
-    gSPSetGeometryMode(glistp++, G_SHADE | G_SHADING_SMOOTH);
-
-    for (i = 0; i < 25; i++)
-        gSP2Triangles(glistp++, 0, 1, 2, 0, 0, 2, 3, 0);
-}

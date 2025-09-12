@@ -6,9 +6,6 @@
 #include "math.h"
 #include "animations.h"
 
-uint GlobalUIntA, GlobalUIntB;
-uint GlobalAddressA, GlobalAddressB;
-int GlobalIntA, GlobalIntB;
 Vector ObjectPosition;
 SVector ObjectAngle;
 SVector LinearTranslation, LinearRotation, LinearScaling;
@@ -161,50 +158,10 @@ void SkeletalMatrix(PolyAnime* AnimeData, float Scale, int Frame)
 	ObjectAngle[0] = LinearRotation[0];
     ObjectAngle[1] = LinearRotation[1];
     ObjectAngle[2] = LinearRotation[2];
-
-	//CreateModelMatrix(GlobalAffine,ObjectPosition,ObjectAngle);
-	//Now apply the scaling size of the object to the matrix and add the drawing code of the 3D model to the F3D. 
-	//ScaleMatrixXYZFixed(GlobalAffine,LinearScaling);
-
-    
-	//ScalingMatrix(GlobalAffine, Scale);
+    CreateModelMatrix(GlobalAffine, ObjectPosition, ObjectAngle);
+    //ScaleMatrixXYZFixed(GlobalAffine,LinearScaling);
+    SetMatrix(1);
 	
-
-
-        guTranslate(&EntityMap[CurrentEntity[GlobalFrame % 2]],
-                    (ObjectPosition[0]),
-                    (ObjectPosition[1]),
-                    (ObjectPosition[2]));
-        gSPMatrix(glistp++, &EntityMap[CurrentEntity[GlobalFrame % 2]++],
-                  G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-
-        guRotate(&EntityMap[CurrentEntity[GlobalFrame % 2]],
-                 (float)(ObjectAngle[2] / 182.0f),
-                 0.0f,
-                 0.0f,
-                 1.0f);
-
-        gSPMatrix(glistp++, &EntityMap[CurrentEntity[GlobalFrame % 2]++],
-                  G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-
-        guRotate(&EntityMap[CurrentEntity[GlobalFrame % 2]],
-                 (float)(ObjectAngle[1] / 182.0f),
-                 0.0f,
-                 1.0f,
-                 0.0f);
-
-        gSPMatrix(glistp++, &EntityMap[CurrentEntity[GlobalFrame % 2]++],
-                  G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-
-        guRotate(&EntityMap[CurrentEntity[GlobalFrame % 2]],
-                 (float)(ObjectAngle[0] / 182.0f),
-                 1.0f,
-                 0.0f,
-                 0.0f);
-
-        gSPMatrix(glistp++, &EntityMap[CurrentEntity[GlobalFrame % 2]++],
-                  G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-    
                   
 }
 extern uint BodyBone_NodeList[];
@@ -258,9 +215,6 @@ void DrawAnime(PolyBone* BoneData, int CurrentFrame)
 		//Recursive Loop for all Children - 
 		DrawAnime(ThisBone, CurrentFrame);
 	}
-    gSPPopMatrix(glistp++,G_MTX_MODELVIEW);
-    gSPPopMatrix(glistp++,G_MTX_MODELVIEW);
-    gSPPopMatrix(glistp++,G_MTX_MODELVIEW);
     gSPPopMatrix(glistp++,G_MTX_MODELVIEW);
 }
 

@@ -69,8 +69,6 @@ Gfx setup_rdpstate[] = {
     gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
     gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, SCREEN_WD, SCREEN_HT),
     gsDPSetColorDither(G_CD_BAYER),
-
-    
 };
 
 /*

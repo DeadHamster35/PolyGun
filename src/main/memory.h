@@ -15,6 +15,7 @@ extern uint SegmentTable[];
 extern void InitDMA();
 extern void LoadDMA(const char *src, const char *dest, const int len);
 extern void SetSegment(uint SegmentID, uint RAMAddress);
+extern void* MemCopy(void* dest, const void* src, size_t count);
 extern uint GetRealAddress(uint RSPAddress);
 extern void StoreRSPSegments();
 extern void mio0decode(unsigned char * Source,unsigned char * Target);

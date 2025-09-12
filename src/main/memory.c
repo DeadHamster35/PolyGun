@@ -48,6 +48,15 @@ void LoadDMA(const char *src, const char *dest, const int len)
     (void) osRecvMesg(&dmaMessageQ, &dummyMesg, OS_MESG_BLOCK);
 }
 
+void* MemCopy(void* dest, const void* src, size_t count)
+{
+    u8* d = (u8*)dest;
+    const u8* s = (const u8*)src;
+    while (count--) {
+        *d++ = *s++;
+    }
+    return dest;
+}
 
 extern void slidec1(unsigned char * Source,unsigned char * Target);
 

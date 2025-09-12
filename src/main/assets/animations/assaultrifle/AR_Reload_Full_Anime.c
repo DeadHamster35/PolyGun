@@ -890,7 +890,8 @@ static PolyBone BodyBone_Bone =
 AnimeHolster AR_Reload_Full =
 {
 	.RootBone = (PolyBone*)&BodyBone_Bone,
-	.FrameCount = 60
+	.FrameCount = 60,
+    .ActionFrame = 47
 };
 
 

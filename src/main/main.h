@@ -9,6 +9,10 @@
 
 #include <ultra64.h>
 #include "common.h"
+
+extern void InitNewGame();
+
+
 #ifdef _LANGUAGE_C
 #define PRINTF osSyncPrintf
 /* Definition of the external variable  */
