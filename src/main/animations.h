@@ -17,6 +17,6 @@
 
 
 
-extern void DrawHolster(AnimeHolster* HolsterData, int Frame);
+extern void DrawAnime(PolyBone* BoneData, int Frame);
 
 #endif

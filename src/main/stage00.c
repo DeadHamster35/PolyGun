@@ -88,7 +88,7 @@ void makeDL00(void)
 
     for (int ThisPlayer = 0; ThisPlayer < PlayerCount; ThisPlayer++)
     {
-        gDPPipeSync(glistp++);        
+        //gDPPipeSync(glistp++);        
         DrawFirstPerson(dynamicp,ThisPlayer);
 
         gSPClearGeometryMode(glistp++, G_ZBUFFER);
@@ -112,9 +112,15 @@ void makeDL00(void)
     
     /* Display the drawing state   */
     nuDebConTextPos(0, 2, 12);
-    sprintf(conbuf, "%2d draw/sec", dspcount);
+    nuDebConTextPos(1, 2, 13);
+    nuDebConTextPos(2, 2, 14);
+    //sprintf(conbuf, "%2d draw/sec", dspcount);
+    sprintf(conbuf, "%d ", glistp - gfx_glist[gfx_gtask_no]);
     nuDebConCPuts(0, conbuf);
-
+    sprintf(conbuf, "%d ", (GameCameras[0].Location.Angle[2] / DEG1));
+    nuDebConCPuts(1, conbuf);
+    sprintf(conbuf, "%d ", GlobalFrame % 2);
+    nuDebConCPuts(2, conbuf);
     /* Draw characters on the frame buffer  */
     nuDebConDisp(NU_SC_SWAPBUFFER);
     /* Switch display list buffers  */

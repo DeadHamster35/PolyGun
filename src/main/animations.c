@@ -168,8 +168,6 @@ extern uint BodyBone_NodeList[];
 extern PolyNode BodyBone_CyborgTP_Node;
 void DrawAnime(PolyBone* BoneData, int CurrentFrame)
 {
-
-
 	PolyAnime* AnimeData = BoneData->AnimeData;
 
 	
@@ -194,10 +192,10 @@ void DrawAnime(PolyBone* BoneData, int CurrentFrame)
 			
 		}
 
-		uint* MeshArray = (uint*) ThisNode->MeshOffsets;
+		
 		for (int CurrentMesh = 0; CurrentMesh < ThisNode->MeshCount; CurrentMesh++)
 		{	
-			gSPDisplayList(glistp++, MeshArray[CurrentMesh]);
+			gSPDisplayList(glistp++, ThisNode->MeshOffsets[CurrentMesh]);
 		}
         
         if (ThisNode->ClosingDL != 0)
@@ -221,9 +219,7 @@ void DrawAnime(PolyBone* BoneData, int CurrentFrame)
 void DrawHolster(AnimeHolster* HolsterData, int Frame)
 {    
     
-	PolyBone* BoneData = HolsterData->RootBone;
 	//Begin DrawAnime loop for RootBone
-	DrawAnime(BoneData, Frame);
 	
 	
 }

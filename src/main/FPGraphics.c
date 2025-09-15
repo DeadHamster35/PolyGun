@@ -396,8 +396,7 @@ void DrawAmmo(int PlayerIndex)
 
 
     
-    gDPSetFillColor(glistp++, (GPACK_RGBA5551(64, 128, 235, 1) << 16 | 
-			       GPACK_RGBA5551(128, 128, 215, 1)));
+    
     
     float AmmoRatio;
     
@@ -410,7 +409,8 @@ void DrawAmmo(int PlayerIndex)
     {
         AmmoRatio = (float)LocalEquip->Magazine / (float)LocalClass->MagazineSize;
     }
-
+    gDPSetPrimColor(glistp++, 0, 0, 32, 208, 255, 192);
+    gDPSetCombineMode(glistp++,G_CC_PRIMITIVE, G_CC_PRIMITIVE);
     gDPFillRectangle(glistp++,
         (short)( (WeaponCoords[PlayerIndex][0] ) + 4 ), 
         (short)( ((WeaponCoords[PlayerIndex][1] + (ReticleScale[PlayerIndex] * 20.0f)))), 
@@ -539,7 +539,7 @@ void DrawHUD(int PlayerIndex)
     PGCamera *LocalCamera = (PGCamera *)&GameCameras[PlayerIndex];
     WeaponClass* LocalWeapon = (WeaponClass*)LocalPlayer->WeaponArray[LocalPlayer->SelectedWeapon].Class;
 
-    
+    gDPSetRenderMode( glistp++, G_RM_AA_XLU_SURF, G_RM_AA_XLU_SURF2);
     gDPSetDepthSource(glistp++, G_ZS_PRIM);
     gDPSetPrimDepth(glistp++, 0, 0);
     gDPSetTexturePersp(glistp++, G_TP_NONE);
@@ -559,7 +559,7 @@ void DrawHUD(int PlayerIndex)
 
 
     //reticle
-    if (GamePlayers[PlayerIndex].ZTarget > 0)
+    if (GamePlayers[PlayerIndex].ZTarget >= 0)
     {
         gDPSetPrimColor(glistp++, 0, 0, 255, 0, 0, 192);
     }

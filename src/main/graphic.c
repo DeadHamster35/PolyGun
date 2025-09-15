@@ -42,7 +42,7 @@ Lights1 Player_Lights[4]={
     {{128, 128, 128, 0, 128, 128, 128, 0},{240,128,128,0,240,128,128,0,LDIRX,LDIRY,LDIRZ,0}},
 };
 
-Mtx EntityMap[9192];
+Mtx EntityMap[512];
 short CurrentEntity[4];
 int GlobalFrame;
 short RenderEnable, GameSequence;
@@ -198,8 +198,28 @@ void DrawFirstPerson(Dynamic *dynamicp, int PlayerIndex)
         return;
     }
     
+    Light_t* Target = (Light_t*)&Player_Lights[PlayerIndex].l[0];
+
+    Vector LightPath;
+    LightPath[0] = -0;
+    LightPath[1] = -96;
+    LightPath[2] = -64;
+    //{128,128,128,0,128,128,128,0,LDIRX,LDIRY,LDIRZ,0}
     
     PGCamera *LocalCamera = (PGCamera *)&GameCameras[PlayerIndex];
+    
+    AlignZVector(LightPath, LocalCamera->Location.Angle[2]);
+    AlignYVector(LightPath, LocalCamera->Location.Angle[1]);
+
+    Target->dir[0] = LightPath[0];
+    Target->dir[1] = LightPath[1];
+    
+    gSPNumLights(glistp++, 1);
+    gSPLight(glistp++, (&Player_Lights[PlayerIndex].l[0]),1);
+	gSPLight(glistp++, (&Player_Lights[PlayerIndex].a),2);
+
+    
+    
     
     PGScreen *LocalScreen = (PGScreen*)&LocalCamera->Screen;
     LocalScreen->Viewport.vp.vscale[0] = LocalCamera->Screen.Size[0] * 2;
@@ -209,20 +229,9 @@ void DrawFirstPerson(Dynamic *dynamicp, int PlayerIndex)
     LocalScreen->Viewport.vp.vtrans[1] = LocalCamera->Screen.Position[1] * 4;
     
     gSPViewport(glistp++, (Vp*)&LocalScreen->Viewport);
-    
-    Light_t* Target = (Light_t*)&Player_Lights[PlayerIndex].l[0];
 
-    Vector LightPath;
-    LightPath[0] = -0;
-    LightPath[1] = -96;
-    LightPath[2] = -64;
-    //{128,128,128,0,128,128,128,0,LDIRX,LDIRY,LDIRZ,0}
-    
-    AlignZVector(LightPath, LocalCamera->Location.Angle[2]);
-    AlignYVector(LightPath, LocalCamera->Location.Angle[1]);
 
-    Target->dir[0] = LightPath[0];
-    Target->dir[1] = LightPath[1];
+    
     
     
     // Setup model matrix
@@ -262,12 +271,8 @@ void DrawFirstPerson(Dynamic *dynamicp, int PlayerIndex)
     );
 
 
-    gSPNumLights(glistp++, 1);
-    gSPLight(glistp++, (&Player_Lights[PlayerIndex].l[0]),1);
-	gSPLight(glistp++, (&Player_Lights[PlayerIndex].a),2);
-
-
-    DrawHolster((AnimeHolster*)GamePlayers[PlayerIndex].FPAnime, GamePlayers[PlayerIndex].FPAnimeTimer.CurrentTime);
+    //DrawHolster((AnimeHolster*)GamePlayers[PlayerIndex].FPAnime, GamePlayers[PlayerIndex].FPAnimeTimer.CurrentTime);
+    DrawAnime(GamePlayers[PlayerIndex].FPAnime->RootBone, GamePlayers[PlayerIndex].FPAnimeTimer.CurrentTime);
     gDPPipeSync(glistp++);
         
         
@@ -275,8 +280,8 @@ void DrawFirstPerson(Dynamic *dynamicp, int PlayerIndex)
 }
 void DrawLevelScene(Dynamic *dynamicp, int PlayerIndex)
 {
+
     
-    PGCamera *LocalCamera = (PGCamera *)&GameCameras[PlayerIndex];
 
     
     
@@ -286,7 +291,7 @@ void DrawLevelScene(Dynamic *dynamicp, int PlayerIndex)
         // Don't draw for CPU bots
         return;
     }
-    
+    PGCamera *LocalCamera = (PGCamera *)&GameCameras[PlayerIndex];
     PGScreen *LocalScreen = (PGScreen*)&LocalCamera->Screen;
     LocalScreen->Viewport.vp.vscale[0] = LocalCamera->Screen.Size[0] * 2;
     LocalScreen->Viewport.vp.vscale[1] = LocalCamera->Screen.Size[1] * 2;
@@ -297,7 +302,6 @@ void DrawLevelScene(Dynamic *dynamicp, int PlayerIndex)
     gSPViewport(glistp++, (Vp*)&LocalScreen->Viewport);
     if (LocalPlayer->StatusBits & STATUSZOOM)
     {
-        
         LocalCamera->FOVY = 70.0f / LocalPlayer->ZoomFloat;
     }
     else
@@ -306,7 +310,7 @@ void DrawLevelScene(Dynamic *dynamicp, int PlayerIndex)
     }
     
     guPerspective(&dynamicp->LevelMap.Projection[PlayerIndex], &LevelNormal[PlayerIndex],
-                  LocalCamera->FOVY, (float)(LocalCamera->Screen.Size[0] / LocalCamera->Screen.Size[1]), LocalCamera->Near, LocalCamera->Far, 1.0);
+                  LocalCamera->FOVY, (float)(LocalCamera->Screen.Size[0] / LocalCamera->Screen.Size[1]), LocalCamera->Near, LocalCamera->Far, 1.0f);
     gSPPerspNormalize(glistp++, LevelNormal[PlayerIndex]);
 
     guLookAt(&dynamicp->LevelMap.Viewing[PlayerIndex],
@@ -335,10 +339,9 @@ void DrawLevelScene(Dynamic *dynamicp, int PlayerIndex)
     );
 
 
+        gSPDisplayList(glistp++, (0x06000000 | LoadedScenario.DisplayTableAddress));
     
     
-    
-    gSPDisplayList(glistp++, OS_K0_TO_PHYSICAL(0x06000000 | LoadedScenario.DisplayTableAddress));
     
     gDPSetRenderMode(glistp++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
     

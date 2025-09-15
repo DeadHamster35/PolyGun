@@ -16,7 +16,7 @@
 /* The maximum length of the display list of one task */
 #define GFX_GLIST_LEN     2048
 /* The length of the display list only for the buffer clear */
-#define GFX_CLEAR_GLIST_LEN     512
+#define GFX_CLEAR_GLIST_LEN     1024
 
 /*-------------------------- define structure ------------------------------ */
 /* The structure of the projection-matrix */
@@ -49,7 +49,7 @@ extern Vp ViewportP3;
 extern Vp ViewportP4;
 
 extern Lights1 Player_Lights[4];
-extern Mtx EntityMap[9192];
+extern Mtx EntityMap[];
 extern short CurrentEntity[4];
 extern int GlobalFrame;
 extern short RenderEnable, GameSequence;

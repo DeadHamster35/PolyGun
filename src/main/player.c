@@ -260,7 +260,7 @@ int GetSpawnPoint(int PlayerIndex)
 
     Vector Source, Target;
     short BestIndex, HitIndex;
-    float BestDistance, ClosestDistance;
+    float BestDistance, FarthestDistance;
     
     
     BestDistance = -1.0f;
@@ -271,7 +271,7 @@ int GetSpawnPoint(int PlayerIndex)
         Source[1] = (float)SpawnPoints[ThisIndex].Position[1];
         Source[2] = (float)SpawnPoints[ThisIndex].Position[2];
         HitIndex = 0;
-        ClosestDistance = -1.0f;
+        FarthestDistance = 9999999999.0f;
         for (int ThisPlayer = 0; ThisPlayer < PlayerCount + BotCount; ThisPlayer++)
         {
             if (ThisPlayer == PlayerIndex)
@@ -282,17 +282,17 @@ int GetSpawnPoint(int PlayerIndex)
             Target[1] = GamePlayers[ThisPlayer].Location.Position[1];
             Target[2] = GamePlayers[ThisPlayer].Location.Position[2];
             float CheckDistance = GetDistance(Target, Source);
-            if (ClosestDistance < CheckDistance)
+            if (FarthestDistance > CheckDistance)
             {
-                ClosestDistance = CheckDistance;
+                FarthestDistance = CheckDistance;
                 HitIndex = 1;
             }
 
         }
         
-        if (HitIndex && (ClosestDistance > BestDistance))
+        if (HitIndex && (FarthestDistance > BestDistance))
         {
-            BestDistance = ClosestDistance;
+            BestDistance = FarthestDistance;
             BestIndex = ThisIndex;
         }
 
@@ -313,13 +313,10 @@ void ActionPlayerStatus(int PlayerIndex)
         
         int PlayerHit;
         float Distance;
-        PlayerHit = CheckViewCone(&Distance, PlayerIndex, 50.0f);
+        PlayerHit = CheckViewCone(PlayerIndex, 50.0f);
         if (PlayerHit != -1)
         {
-            if (Distance < 1.0f)
-            {
-                DamagePlayer(PlayerHit, 75);
-            }
+            DamagePlayer(PlayerHit, 75);            
         }
     }
     if (LocalPlayer->StatusBits & STATUSRELOADING)
@@ -515,6 +512,9 @@ AffineMtx CameraMatrix[4];
 float Nerf;
 void UpdatePlayerControls()
 {
+    
+    GetPlayerTargets();
+
     for (int ThisPlayer = 0; ThisPlayer < PlayerCount; ThisPlayer++)
     {
         DebugControl(ThisPlayer);
@@ -536,7 +536,7 @@ void UpdatePlayerControls()
         
 
         //get z-targets
-        GetPlayerTargets();
+        
 
 
         NUContData* LocalPad = (NUContData*)&contdata[ThisPlayer];
@@ -556,7 +556,7 @@ void UpdatePlayerControls()
         /* P3 Analog Controlss
         if ((P3->stick_x > 5) || (P3->stick_x < -5))
         {
-            if (LocalPlayer->ZTarget > 0)
+            if (LocalPlayer->ZTarget >= 0)
             {
                 float StickSpeed = (float)P3->stick_x * -0.02f;
                 LocalCamera->Location.Angle[2] += DEGF * StickSpeed;
@@ -570,7 +570,7 @@ void UpdatePlayerControls()
 
         if ((P3->stick_y > 5) || (P3->stick_y < -5))
         {
-            if (LocalPlayer->ZTarget > 0)
+            if (LocalPlayer->ZTarget >= 0)
             {
                 float StickSpeed = (float)P3->stick_y * -0.01f;
                 LocalCamera->Location.Angle[0] -= DEGF * StickSpeed;
@@ -714,7 +714,7 @@ void UpdatePlayerControls()
 
 
                     
-                if (LocalPlayer->ZTarget > 0)
+                if (LocalPlayer->ZTarget >= 0)
                 {
                     if (LocalPad->button & BTN_CLEFT)
                     {
@@ -836,10 +836,10 @@ void GetPlayerTargets()
     float TargetCheck;
     for (int ThisPlayer = 0; ThisPlayer < PlayerCount; ThisPlayer++)
     {
-        GamePlayers[ThisPlayer].ZTarget = 0;
+        GamePlayers[ThisPlayer].ZTarget = -1;
         if (GamePlayers[ThisPlayer].IsCPU == 0)
         {
-            GamePlayers[ThisPlayer].ZTarget = CheckViewCone(&TargetCheck, ThisPlayer, 1000.0f);
+            GamePlayers[ThisPlayer].ZTarget = CheckViewCone(ThisPlayer, 2500.0f);
         }
         
     }
@@ -908,11 +908,6 @@ void UpdatePlayerResponse()
     {
         Player* LocalPlayer = (Player*)&GamePlayers[ThisPlayer];
 
-
-        PRINTF("PLY %d - %04x \n", ThisPlayer, LocalPlayer->StatusBits);
-
-
-        
         if (LocalPlayer->RespawnTimer > 0)
         {
             LocalPlayer->RespawnTimer--;
@@ -977,7 +972,7 @@ void UpdatePlayerResponse()
         }
         
 
-        LocalPlayer->Location.VelocityFront[2] += GRAVITY;
+        //LocalPlayer->Location.VelocityFront[2] += GRAVITY;
         if (LocalPlayer->Location.VelocityFront[2] > TERMINALVELOCITY)
         {
             LocalPlayer->Location.VelocityFront[2] = TERMINALVELOCITY;
@@ -990,12 +985,11 @@ void UpdatePlayerResponse()
             LocalPlayer->Location.VelocityFront[2] * LocalPlayer->Location.VelocityFront[2]
         );
 
-
+        /*
         if ((TotalSpeed > MINIMALVELOCITY) || (LocalPlayer->StatusBits & STATUSINAIR))
         {
-            if (!PlayerLevelCollisionC(ThisPlayer))
+            if (!CheckPlayerCollision(ThisPlayer))
             {
-                //PlayerLevelCollisionB(ThisPlayer);
                 LocalPlayer->StatusBits |= STATUSINAIR;
             }
             else
@@ -1011,10 +1005,11 @@ void UpdatePlayerResponse()
             LocalPlayer->Location.VelocityFront[1] = 0;
             LocalPlayer->Location.VelocityFront[2] = 0;
         }
-        
+        */
 
         
-        
+        LocalPlayer->Location.VelocityFront[0] *= 0.85f;
+        LocalPlayer->Location.VelocityFront[1] *= 0.85f;
 
         //Apply gravity to the player. Cap at terminal velocity.
         

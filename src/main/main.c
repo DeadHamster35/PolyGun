@@ -221,10 +221,10 @@ void InitNewGame()
 {
     RenderEnable = 0;
     //PlayerCount = 1;
-    BotCount = 4;
+    BotCount = 0;
     CreateScreenCoords();
     LevelIndex = 1;
-    LoadScenario((LevelScenario*)(uint)&BeaverCreek_Scenario);   
+    LoadScenario((LevelScenario*)(uint)&RiverBed_Scenario);   
 
     InitWeaponClasses();
     InitActors();

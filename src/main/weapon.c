@@ -587,7 +587,7 @@ void FireBullet(int PlayerIndex)
                 }
                 
 
-                if (LocalPlayer->ZTarget > 0)
+                if (LocalPlayer->ZTarget >= 0)
                 {
                     BulletOrigin[0] = GamePlayers[LocalPlayer->ZTarget].Location.Position[0] - LocalPlayer->Location.Position[0];
                     BulletOrigin[1] = GamePlayers[LocalPlayer->ZTarget].Location.Position[1] - LocalPlayer->Location.Position[1];
@@ -728,7 +728,7 @@ void CheckProjectiles()
         }
         if (ProjectileArray[ThisBullet].Status == BULLET_HIT)
         {
-            if (ProjectileArray[ThisBullet].Lifespan > 5)
+            if (ProjectileArray[ThisBullet].Lifespan > 15)
             {
                 ProjectileArray[ThisBullet].Status = BULLET_INACTIVE;
             }
