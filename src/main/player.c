@@ -219,8 +219,8 @@ void initCamera(int ThisPlayer)
     LocalCamera->LookAt[1] = 100.0f;
     LocalCamera->Location.Radius = 10.0f;
     LocalCamera->FOVY = 70;
-    LocalCamera->Near = 2.0f;
-    LocalCamera->Far = 16000.0f;
+    LocalCamera->Near = 10.0f;
+    LocalCamera->Far = 10000.0f;
 }
 
 void initAllPlayers()
@@ -311,16 +311,16 @@ void ActionPlayerStatus(int PlayerIndex)
     if (LocalPlayer->StatusBits & STATUSMELEE)
     {
         
-        int PlayerHit;
+        int PlayerHit = -1;
         float Distance;
-        PlayerHit = CheckViewCone(PlayerIndex, 50.0f);
+        //PlayerHit = CheckViewCone(PlayerIndex, 50.0f);
         if (PlayerHit != -1)
         {
             DamagePlayer(PlayerHit, 75);            
         }
     }
     if (LocalPlayer->StatusBits & STATUSRELOADING)
-    {   
+    {         
         LoadWeaponAmmo(PlayerIndex);
     }
 }
@@ -641,7 +641,10 @@ void UpdatePlayerControls()
                 //Check for Reload
                 if (LocalPad->trigger & BTN_B) 
                 {
-                    LocalPlayer->ActionBits |= ACTIONRELOAD;
+                    if (!LocalWeapon->WeaponFlags & WEAPON_HEAT)
+                    {
+                        LocalPlayer->ActionBits |= ACTIONRELOAD;
+                    }
                 }
                 if (LocalPad->button & BTN_B)
                 {
@@ -649,7 +652,12 @@ void UpdatePlayerControls()
                     {
                         LocalPlayer->ButtonTimes.ButtonTimerB = 0;
                         LocalPlayer->ButtonCooldown.ButtonTimerB = 10;
-                        LocalPlayer->ActionBits &= ~ACTIONRELOAD;
+
+                        if (!LocalWeapon->WeaponFlags & WEAPON_HEAT)
+                        {
+                            LocalPlayer->ActionBits &= ~ACTIONRELOAD;
+                        }
+                        
                         LocalPlayer->ActionBits |= ACTIONPICKUP;
                     }
                 }
@@ -839,7 +847,7 @@ void GetPlayerTargets()
         GamePlayers[ThisPlayer].ZTarget = -1;
         if (GamePlayers[ThisPlayer].IsCPU == 0)
         {
-            GamePlayers[ThisPlayer].ZTarget = CheckViewCone(ThisPlayer, 2500.0f);
+            //GamePlayers[ThisPlayer].ZTarget = CheckViewCone(ThisPlayer, 2500.0f);
         }
         
     }
@@ -985,18 +993,18 @@ void UpdatePlayerResponse()
             LocalPlayer->Location.VelocityFront[2] * LocalPlayer->Location.VelocityFront[2]
         );
 
-        /*
+        
         if ((TotalSpeed > MINIMALVELOCITY) || (LocalPlayer->StatusBits & STATUSINAIR))
         {
-            if (!CheckPlayerCollision(ThisPlayer))
+            //if (!CheckPlayerCollision(ThisPlayer))
             {
                 LocalPlayer->StatusBits |= STATUSINAIR;
             }
-            else
+            //else
             {
-                LocalPlayer->StatusBits &= ~STATUSINAIR;
-                LocalPlayer->Location.VelocityFront[0] *= 0.85f;
-                LocalPlayer->Location.VelocityFront[1] *= 0.85f;
+                //LocalPlayer->StatusBits &= ~STATUSINAIR;
+                //LocalPlayer->Location.VelocityFront[0] *= 0.85f;
+                //LocalPlayer->Location.VelocityFront[1] *= 0.85f;
             }
         }   
         else
@@ -1005,7 +1013,7 @@ void UpdatePlayerResponse()
             LocalPlayer->Location.VelocityFront[1] = 0;
             LocalPlayer->Location.VelocityFront[2] = 0;
         }
-        */
+        
 
         
         LocalPlayer->Location.VelocityFront[0] *= 0.85f;
@@ -1070,7 +1078,7 @@ void UpdatePlayerResponse()
         }
         
     }
-    
+    return;
     Vector Size;
     Size[0] = GamePlayers[0].Location.Radius;
     Size[1] = GamePlayers[0].Location.Radius;

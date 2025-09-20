@@ -8,7 +8,8 @@ extern char _BlockTestSeg5[];
 extern char _BlockTestSeg6[];
 StaticPickup BlockTest_PickupList[] = 
 {
-	{ { 176, -19, 3}, {0, 0, 0}, 0,0,0,0},
+	{ { 176, -19, 3}, {0, 0, 0}, 0,0,0,0, 0,0,0,0},
+    { { 176, -19, 3}, {0, 0, 0}, 0,0,0,0, 0,0,0,0},
 };
 
 

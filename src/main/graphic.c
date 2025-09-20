@@ -115,6 +115,8 @@ void gfxClearCfb(void)
 
 void SetMatrix(int Mode)
 {
+    return;
+    
     if (Mode == 0)
     {
         AffineToMtx(GlobalAffine, (Mtx *)&EntityMap[CurrentEntity[GlobalFrame % 2]]);
@@ -293,11 +295,11 @@ void DrawLevelScene(Dynamic *dynamicp, int PlayerIndex)
     }
     PGCamera *LocalCamera = (PGCamera *)&GameCameras[PlayerIndex];
     PGScreen *LocalScreen = (PGScreen*)&LocalCamera->Screen;
-    LocalScreen->Viewport.vp.vscale[0] = LocalCamera->Screen.Size[0] * 2;
-    LocalScreen->Viewport.vp.vscale[1] = LocalCamera->Screen.Size[1] * 2;
+    LocalScreen->Viewport.vp.vscale[0] = 640;
+    LocalScreen->Viewport.vp.vscale[1] = 480;
     
-    LocalScreen->Viewport.vp.vtrans[0] = LocalCamera->Screen.Position[0] * 4;
-    LocalScreen->Viewport.vp.vtrans[1] = LocalCamera->Screen.Position[1] * 4;
+    LocalScreen->Viewport.vp.vtrans[0] = 640;
+    LocalScreen->Viewport.vp.vtrans[1] = 480;
     
     gSPViewport(glistp++, (Vp*)&LocalScreen->Viewport);
     if (LocalPlayer->StatusBits & STATUSZOOM)
@@ -310,15 +312,15 @@ void DrawLevelScene(Dynamic *dynamicp, int PlayerIndex)
     }
     
     guPerspective(&dynamicp->LevelMap.Projection[PlayerIndex], &LevelNormal[PlayerIndex],
-                  LocalCamera->FOVY, (float)(LocalCamera->Screen.Size[0] / LocalCamera->Screen.Size[1]), LocalCamera->Near, LocalCamera->Far, 1.0f);
+                  70.0f, (float)(320.0f/240.0f), 5.0f, 8000.0f, 1.0f);
     gSPPerspNormalize(glistp++, LevelNormal[PlayerIndex]);
 
     guLookAt(&dynamicp->LevelMap.Viewing[PlayerIndex],
              LocalCamera->Location.Position[0], LocalCamera->Location.Position[1], LocalCamera->Location.Position[2],
              LocalCamera->LookAt[0], LocalCamera->LookAt[1], LocalCamera->LookAt[2],
-             LocalCamera->UpVector[0], LocalCamera->UpVector[1], LocalCamera->UpVector[2]);
+             0, 0, 1);
 
-    guTranslate(&dynamicp->LevelMap.Translation[PlayerIndex], 0.0f, 0.0f, 0.0f);
+    guTranslate(&dynamicp->LevelMap.Translation[PlayerIndex], 100.0f, 150.0f, 0.0f);
 
     gSPMatrix(glistp++, &dynamicp->LevelMap.Projection[PlayerIndex],
               G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH);
@@ -327,20 +329,21 @@ void DrawLevelScene(Dynamic *dynamicp, int PlayerIndex)
     gSPMatrix(glistp++, &dynamicp->LevelMap.Translation[PlayerIndex],
               G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
 
-
+    
     gDPSetScissor
     (
         glistp++, 
         G_SC_NON_INTERLACE, 
-        LocalCamera->Screen.Position[0] - (LocalCamera->Screen.Size[0] * 0.5f), 
-        LocalCamera->Screen.Position[1] - (LocalCamera->Screen.Size[1] * 0.5f), 
-        LocalCamera->Screen.Position[0] + (LocalCamera->Screen.Size[0] * 0.5f), 
-        LocalCamera->Screen.Position[1] + (LocalCamera->Screen.Size[1] * 0.5f)
+        0,
+        0,
+        320,
+        240
     );
 
 
-        gSPDisplayList(glistp++, (0x06000000 | LoadedScenario.DisplayTableAddress));
-    
+    //gSPDisplayList(glistp++, (0x06000000 | LoadedScenario.DisplayTableAddress));
+    gSPDisplayList(glistp++, &Draw_CyborgTP_T);
+    gSPDisplayList(glistp++, &Draw_HitBox_M);
     
     
     gDPSetRenderMode(glistp++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
@@ -392,16 +395,7 @@ void DrawPickups(int ThisPlayer)
 
 
 void DrawBullets(int ThisPlayer)
-{
-    Vector Up;
-    Vector Forward;
-    Vector Right;
-    Vector TrueUp;
-    Quaternion Quat;
-    Up[0] = 0;
-    Up[1] = 0;
-    Up[2] = 1.0f;
-    
+{   
     gDPSetCombineMode (glistp++, PROJ_COMBINE, PROJ_COMBINE);
     gSPSetGeometryMode(glistp++, G_SHADE | G_ZBUFFER | G_CULL_BACK);
     gDPSetRenderMode(glistp++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);

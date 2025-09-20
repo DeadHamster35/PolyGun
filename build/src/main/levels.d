@@ -75,4 +75,5 @@ build/src/main/levels.o: src/main/levels.c /usr/include/n64/nusys/nusys.h \
  include/../src/main/assets/textures/plasmarifle/PlasmaRifle_Texture.h \
  src/main/main.h src/main/math.h src/main/memory.h \
  include/compressionbuffer.h include/common.h src/main/levels.h \
- src/main/collision.h src/main/player.h src/main/pathfinding.h
+ src/main/collision.h src/main/player.h src/main/pathfinding.h \
+ src/main/weapon.h

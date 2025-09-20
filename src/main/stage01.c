@@ -97,7 +97,6 @@ void makeDL01(void)
     osViSetSpecialFeatures(OS_VI_DITHER_FILTER_ON);
 
     SetSegment(0,0);
-    SetSegment(2, osVirtualToPhysical(dynamicp));
 
     StoreRSPSegments();
 

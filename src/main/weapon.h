@@ -18,6 +18,7 @@ extern void initProjectiles();
 extern int MoveProjectile(int BulletIndex);
 extern int CheckPickups(int PlayerIndex);
 extern void CheckProjectiles();
+extern void CheckWeaponHeat();
 extern void SwapGun(int PlayerIndex);
 extern void CheckReload(int PlayerIndex);
 extern void ReloadWeapon(int PlayerIndex);

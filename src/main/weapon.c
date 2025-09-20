@@ -38,11 +38,19 @@ void InitWeaponClasses()
     AssaultRifle.MaxImpulseY = 15;
     AssaultRifle.ShotsFired = 1;
     AssaultRifle.AmmoPerRound = 1;
+
     AssaultRifle.HeatPerRound = 0;
+    AssaultRifle.HeatLossFrames = 0;
+    AssaultRifle.HeatLoss = 0;
+    
     AssaultRifle.AgePerRound = 0;
+    AssaultRifle.MaxAge = 0;
+
     AssaultRifle.ZoomLevel[0] = -1;
     AssaultRifle.ZoomLevel[1] = -1;
     AssaultRifle.WeaponFlags = 0;
+    AssaultRifle.ProjColor = GetRGBA16(255,255,64,255);
+    
 
     AssaultRifle.HUD.Reticle = (Gfx*)&AssaultRifleReticleGFX;
     AssaultRifle.HUD.PickupIcon = (Gfx*)&Draw_IconHUD_AR_T;
@@ -70,11 +78,18 @@ void InitWeaponClasses()
     Pistol.MaxImpulseY = 30;
     Pistol.ShotsFired = 1;
     Pistol.AmmoPerRound = 1;    
+
     Pistol.HeatPerRound = 0;
+    Pistol.HeatLossFrames = 0;
+    Pistol.HeatLoss = 0;
+
     Pistol.AgePerRound = 0;
+    Pistol.MaxAge = 0;
+
     Pistol.ZoomLevel[0] = 20;
     Pistol.ZoomLevel[1] = -1;
     Pistol.WeaponFlags = 0;
+    Pistol.ProjColor = GetRGBA16(255,255,64,255);
     
     Pistol.HUD.Reticle = (Gfx*)&PistolReticleGFX;
     Pistol.HUD.PickupIcon = (Gfx*)&Draw_IconHUD_Pistol_T;
@@ -103,12 +118,20 @@ void InitWeaponClasses()
     PlasmaRifle.MaxImpulseY = 2;
     PlasmaRifle.ShotsFired = 1;
     PlasmaRifle.AmmoPerRound = 1;
-    PlasmaRifle.HeatPerRound = 3;
+
+    PlasmaRifle.HeatPerRound = 4;
+    PlasmaRifle.HeatLossFrames = 1;
+    PlasmaRifle.HeatLoss = 2;
+
+    
     PlasmaRifle.AgePerRound = 1;
+    PlasmaRifle.MaxAge = 200;
+    
     PlasmaRifle.ZoomLevel[0] = -1;
     PlasmaRifle.ZoomLevel[1] = -1;
     PlasmaRifle.WeaponFlags = 0;
     PlasmaRifle.WeaponFlags |= WEAPON_HEAT;
+    PlasmaRifle.ProjColor = GetRGBA16(0,128,255,255);
 
     PlasmaRifle.HUD.Reticle = (Gfx*)&PlasmaRifleReticleGFX;
     PlasmaRifle.HUD.PickupIcon = (Gfx*)&Draw_IconHUD_PlasmaRifle_T;
@@ -210,82 +233,29 @@ void PickupObject(int PlayerIndex)
             LocalWeapon->Class = WeaponClassArray[LocalPick->PickupClass];
             LocalPick->PickupClass = HeldData;
 
-            if (LocalWeapon->Class->WeaponFlags & WEAPON_HEAT)
-            {
-                HeldData = LocalWeapon->Heat;
-            }
-            else
-            {
-                HeldData = LocalWeapon->Ammo;
-            }
 
+            //heat
+            HeldData = LocalWeapon->Heat;
+            LocalWeapon->Heat = LocalPick->Heat;
+            LocalPick->Heat = HeldData;
 
-            if (LocalPick->Ammo <= 0)
-            {
-                if (LocalWeapon->Class->WeaponFlags & WEAPON_HEAT)
-                {
-                    LocalWeapon->Age = 0;
-                }
-                else
-                {
-                    LocalWeapon->Ammo = LocalWeapon->Class->MaxAmmo;
-                }
-                
-            }
-            else
-            {
-                if (LocalWeapon->Class->WeaponFlags & WEAPON_HEAT)
-                {
-                    LocalWeapon->Age = LocalPick->Ammo;
-                }
-                else
-                {
-                    LocalWeapon->Ammo = LocalPick->Ammo;
-                }
-            }
+            HeldData = LocalWeapon->HeatFrames;
+            LocalWeapon->HeatFrames = LocalPick->HeatFrames;
+            LocalPick->HeatFrames = HeldData;
 
+            HeldData = LocalWeapon->Age;
+            LocalWeapon->Age = LocalPick->Age;
+            LocalPick->Age = HeldData;
+            
+            //projectiles
+            HeldData = LocalWeapon->Ammo;
+            LocalWeapon->Ammo = LocalPick->Ammo;
             LocalPick->Ammo = HeldData;
 
-
-
-
-            if (LocalWeapon->Class->WeaponFlags & WEAPON_HEAT)
-            {
-                HeldData = LocalWeapon->Age;
-            }
-            else
-            {
-                HeldData = LocalWeapon->Magazine;
-            }
-            
-            
-
-            if (LocalPick->Magazine <= 0)
-            {
-                if (LocalWeapon->Class->WeaponFlags & WEAPON_HEAT)
-                {
-                    LocalWeapon->Age = LocalWeapon->Class->MagazineSize;
-                }
-                else
-                {
-                    LocalWeapon->Magazine = LocalWeapon->Class->MagazineSize;
-                }
-                
-            }
-            else
-            {
-                if (LocalWeapon->Class->WeaponFlags & WEAPON_HEAT)
-                {
-                    LocalWeapon->Age = LocalPick->Magazine;
-                }
-                else
-                {
-                    LocalWeapon->Magazine = LocalPick->Magazine;
-                }
-            }
-
+            HeldData = LocalWeapon->Magazine;
+            LocalWeapon->Magazine = LocalPick->Magazine;
             LocalPick->Magazine = HeldData;
-            
+
             LocalPlayer->FPAnime = LocalWeapon->Class->Bandolier.Idle;
             LocalPlayer->FPAnimeTimer.MaxTime = LocalWeapon->Class->Bandolier.Idle->FrameCount;
             LocalPlayer->FPAnimeTimer.CurrentTime = 0;
@@ -379,12 +349,10 @@ void ReloadWeapon(int PlayerIndex)
     {
         //cheeky bastard bxr
         LocalPlayer->StatusBits &= ~STATUSMELEE;
-        return;
-    }
-    if (LocalClass->WeaponFlags & WEAPON_HEAT)
-    {   
-        //battery weapon
-        return;
+        if (!LocalClass->WeaponFlags & WEAPON_HEAT)
+        {
+            return;
+        }
     }
     if (LocalPlayer->StatusBits & STATUSRELOADING)
     {
@@ -404,7 +372,9 @@ void ReloadWeapon(int PlayerIndex)
     LocalPlayer->ZoomLevel = 0;
 
     LocalPlayer->StatusBits |= STATUSRELOADING;
-    if (LocalEquip->Ammo == 0)
+
+
+    if (LocalClass->WeaponFlags & WEAPON_HEAT)
     {
         LocalPlayer->FPAnime = LocalClass->Bandolier.ReloadEmpty;
         LocalPlayer->FPAnimeTimer.MaxTime = LocalClass->Bandolier.ReloadEmpty->FrameCount;
@@ -413,12 +383,100 @@ void ReloadWeapon(int PlayerIndex)
     }
     else
     {
-        LocalPlayer->FPAnime = LocalClass->Bandolier.ReloadFull;
-        LocalPlayer->FPAnimeTimer.MaxTime = LocalClass->Bandolier.ReloadFull->FrameCount;
-        LocalPlayer->FPAnimeTimer.CurrentTime = 0;
-        LocalPlayer->FPAnimeTimer.ActionFrame = LocalClass->Bandolier.ReloadFull->ActionFrame;
+        if (LocalEquip->Ammo == 0)
+        {
+            LocalPlayer->FPAnime = LocalClass->Bandolier.ReloadEmpty;
+            LocalPlayer->FPAnimeTimer.MaxTime = LocalClass->Bandolier.ReloadEmpty->FrameCount;
+            LocalPlayer->FPAnimeTimer.CurrentTime = 0;
+            LocalPlayer->FPAnimeTimer.ActionFrame = LocalClass->Bandolier.ReloadEmpty->ActionFrame;
+        }
+        else
+        {
+            LocalPlayer->FPAnime = LocalClass->Bandolier.ReloadFull;
+            LocalPlayer->FPAnimeTimer.MaxTime = LocalClass->Bandolier.ReloadFull->FrameCount;
+            LocalPlayer->FPAnimeTimer.CurrentTime = 0;
+            LocalPlayer->FPAnimeTimer.ActionFrame = LocalClass->Bandolier.ReloadFull->ActionFrame;
+        }
     }
+
     
+    
+    
+}
+
+
+void CheckWeaponHeat()
+{
+    for (int ThisPlayer = 0; ThisPlayer < PlayerCount + BotCount; ThisPlayer++)
+    {
+        Player* LocalPlayer = (Player*)&GamePlayers[ThisPlayer];
+        
+        for (int ThisEquip = 0; ThisEquip < 2; ThisEquip++)
+        {
+            if ((ThisEquip == LocalPlayer->SelectedWeapon) && (LocalPlayer->FFrames > 0))
+            {
+                //heat builds up while firing
+                continue;
+            }
+
+            WeaponEquipment *LocalEquip = (WeaponEquipment*)&LocalPlayer->WeaponArray[ThisEquip];
+            WeaponClass *LocalClass = (WeaponClass*)LocalEquip->Class;
+            if (LocalEquip->Class->WeaponFlags & WEAPON_HEAT)
+            {
+                
+                if (LocalEquip->HeatFrames < LocalClass->HeatLossFrames)
+                {
+                    LocalEquip->HeatFrames++;
+                }
+                else
+                {
+                    LocalEquip->HeatFrames = 0;
+                    if (LocalEquip->Heat > LocalClass->HeatLoss)
+                    {
+                        LocalEquip->Heat -= LocalClass->HeatLoss;
+                    }
+                    else
+                    {
+                        LocalEquip->Heat = 0;
+                    }
+                }
+
+            }
+        }
+    }
+
+
+    for (int ThisEquip = 0; ThisEquip < TotalStaticPicks; ThisEquip++)
+    {
+        StaticPickup* LocalStatic = (StaticPickup*)&StaticPickArray[ThisEquip];
+        WeaponClass *LocalClass = (WeaponClass*)WeaponClassArray[LocalStatic->PickupClass];
+
+        if (LocalClass->WeaponFlags & WEAPON_HEAT)
+        {
+            if (LocalStatic->HeatFrames < LocalClass->HeatLossFrames)
+            {
+                LocalStatic->HeatFrames++;
+            }
+            else
+            {
+                LocalStatic->HeatFrames = 0;
+                if (LocalStatic->Heat > LocalClass->HeatLoss)
+                {
+                    LocalStatic->Heat -= LocalClass->HeatLoss;
+                }
+                else
+                {
+                    LocalStatic->Heat = 0;
+                }
+                
+            }
+        }
+
+    }
+        
+        
+        
+        
     
 }
 
@@ -427,6 +485,12 @@ void LoadWeaponAmmo(int PlayerIndex)
     Player* LocalPlayer = (Player*)&GamePlayers[PlayerIndex];
     WeaponEquipment* LocalEquip = (WeaponEquipment*)&LocalPlayer->WeaponArray[LocalPlayer->SelectedWeapon];
     WeaponClass* LocalClass = (WeaponClass*)LocalPlayer->WeaponArray[LocalPlayer->SelectedWeapon].Class;
+    
+    if (LocalClass->WeaponFlags & WEAPON_HEAT)
+    {
+        return;
+    }
+
     int LoadedAmount = LocalClass->MagazineSize;
     int AmmoAmount = LoadedAmount - LocalEquip->Magazine;
     if (AmmoAmount > LocalEquip->Ammo)
@@ -438,8 +502,12 @@ void LoadWeaponAmmo(int PlayerIndex)
     LocalEquip->Magazine = LoadedAmount;
 }
 
-bool CheckMagazine(int PlayerIndex)
+int CheckMagazine(int PlayerIndex)
 {
+    //return 0 for reload/overheat
+    //return 1 for fire true
+    //return 2 for misfire/age
+
     Player* LocalPlayer = (Player*)&GamePlayers[PlayerIndex];
     WeaponEquipment *LocalEquipment = (WeaponEquipment*)&LocalPlayer->WeaponArray[LocalPlayer->SelectedWeapon];
     WeaponClass *LocalWeapon = (WeaponClass*)LocalPlayer->WeaponArray[LocalPlayer->SelectedWeapon].Class;
@@ -451,10 +519,19 @@ bool CheckMagazine(int PlayerIndex)
         {
             LocalEquipment->Heat += LocalWeapon->HeatPerRound;
             LocalEquipment->Age -= LocalWeapon->AgePerRound;
-            return true;
+            
+            return 1;
+        }
+        if (LocalEquipment->Heat >= 100)
+        {
+            return 0;
+        }
+        if (LocalEquipment->Age < LocalWeapon->AgePerRound)
+        {
+            return 2;
         }
         
-        return false;
+        return 0;
         
     }
 
@@ -464,10 +541,10 @@ bool CheckMagazine(int PlayerIndex)
     {
         LocalEquipment->Magazine -= LocalWeapon->AmmoPerRound;
         
-        return true;
+        return 1;
     }
         
-    return false;
+    return 0;
    
 }
 
@@ -535,171 +612,192 @@ void FireBullet(int PlayerIndex)
     bool FirstShot = false;
     for (int ThisShot = 0; ThisShot < LocalWeapon->ShotsFired; ThisShot++)
     {
-        
-        if (!CheckMagazine(PlayerIndex))
+        int MagazineCheck = CheckMagazine(PlayerIndex);
+
+        switch (MagazineCheck)
         {
-            LocalPlayer->ActionBits |= ACTIONRELOAD;
-            return;
-        }
+            case 0:
+            {
+                //force reload
+                LocalPlayer->ActionBits |= ACTIONRELOAD;
+                break;
+            }
 
-        if (!FirstShot)
-        {
-            FirstShot = true;
-            LocalPlayer->StatusBits |= STATUSFIRING;
+            case 2:
+            {
+                //force misfire
+                break;
+            }
 
-            LocalPlayer->FPAnime = LocalWeapon->Bandolier.Fire;
-            LocalPlayer->FPAnimeTimer.MaxTime = LocalWeapon->Bandolier.Fire->FrameCount;
-            LocalPlayer->FPAnimeTimer.CurrentTime = 0;
-            LocalPlayer->FPAnimeTimer.ActionFrame = LocalWeapon->Bandolier.Fire->ActionFrame;
-            
-        }
+            case 1:
+            {
+                //fire bullet
 
-        for (int ThisBullet = 0; ThisBullet < MAXBULLETS; ThisBullet++)
-        {
-            if (ProjectileArray[ThisBullet].Status == BULLET_INACTIVE)
-            { 
-                Projectile* LocalBullet = (Projectile*)&ProjectileArray[ThisBullet];
-                LocalBullet->Status = BULLET_ACTIVE;
-                LocalBullet->InitialSpeed = LocalWeapon->BulletSpeed;
-                LocalBullet->Damage = LocalWeapon->BaseDamage;
-                LocalBullet->Lifespan = LocalWeapon->BulletLife;
-                LocalBullet->Distance = 0;
-                LocalBullet->Owner = PlayerIndex;
-                LocalBullet->RGB = GetRGBA16(255, 255, 0, 255);
+
+                if (!FirstShot)
+                {
+                    FirstShot = true;
+                    LocalPlayer->StatusBits |= STATUSFIRING;
+
+                    LocalPlayer->FPAnime = LocalWeapon->Bandolier.Fire;
+                    LocalPlayer->FPAnimeTimer.MaxTime = LocalWeapon->Bandolier.Fire->FrameCount;
+                    LocalPlayer->FPAnimeTimer.CurrentTime = 0;
+                    LocalPlayer->FPAnimeTimer.ActionFrame = LocalWeapon->Bandolier.Fire->ActionFrame;
+                    
+                }
+
+                for (int ThisBullet = 0; ThisBullet < MAXBULLETS; ThisBullet++)
+                {
+                    if (ProjectileArray[ThisBullet].Status == BULLET_INACTIVE)
+                    { 
+                        Projectile* LocalBullet = (Projectile*)&ProjectileArray[ThisBullet];
+                        LocalBullet->Status = BULLET_ACTIVE;
+                        LocalBullet->InitialSpeed = LocalWeapon->BulletSpeed;
+                        LocalBullet->Damage = LocalWeapon->BaseDamage;
+                        LocalBullet->Lifespan = LocalWeapon->BulletLife;
+                        LocalBullet->Distance = 0;
+                        LocalBullet->Owner = PlayerIndex;
+                        LocalBullet->RGB = LocalWeapon->ProjColor;
+                        
+                        
+                        //Locate Bullet and direct trajectory.
+                        LocalBullet->Location.Position[0] = LocalPlayer->Location.Position[0];
+                        LocalBullet->Location.Position[1] = LocalPlayer->Location.Position[1];
+                        LocalBullet->Location.Position[2] = LocalPlayer->Location.Position[2] + LocalPlayer->Height;
+
+                        if (LocalPlayer->IsCPU == 0)
+                        {
+                            LocalBullet->Location.Angle[0] = GameCameras[PlayerIndex].Location.Angle[0];
+                            LocalBullet->Location.Angle[1] = GameCameras[PlayerIndex].Location.Angle[1];
+                            LocalBullet->Location.Angle[2] = GameCameras[PlayerIndex].Location.Angle[2];
+                        }
+                        else
+                        {
+                            LocalBullet->Location.Angle[0] = LocalPlayer->Location.Angle[0];
+                            LocalBullet->Location.Angle[1] = LocalPlayer->Location.Angle[1];
+                            LocalBullet->Location.Angle[2] = LocalPlayer->Location.Angle[2];
+                        }
+                        
+
+                        if (LocalPlayer->ZTarget >= 0)
+                        {
+                            BulletOrigin[0] = GamePlayers[LocalPlayer->ZTarget].Location.Position[0] - LocalPlayer->Location.Position[0];
+                            BulletOrigin[1] = GamePlayers[LocalPlayer->ZTarget].Location.Position[1] - LocalPlayer->Location.Position[1];
+                            BulletOrigin[2] = (GamePlayers[LocalPlayer->ZTarget].Location.Position[2] + GamePlayers[LocalPlayer->ZTarget].Height * 0.7f) - (LocalPlayer->Location.Position[2] + LocalPlayer->Height);
+
+                            NormalizeVector(BulletOrigin);
+                            BulletOrigin[0] *= 100.0f;
+                            BulletOrigin[1] *= 100.0f;
+                            BulletOrigin[2] *= 100.0f;
+                            BulletOrigin[0] += LocalPlayer->Location.Position[0];
+                            BulletOrigin[1] += LocalPlayer->Location.Position[1];
+                            BulletOrigin[2] += LocalPlayer->Location.Position[2] + LocalPlayer->Height;
+                            
+                            float Decimator = 0.01f / LocalPlayer->ZoomFloat;
+                            Error[0] = (BulletOrigin[0]) - ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+                            Error[1] = (BulletOrigin[1]) - ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+                            Error[2] = (BulletOrigin[2]) - ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+                            
+
+                            Error[0] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+                            Error[1] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+                            Error[2] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+
+                            if (LocalPlayer->IsCPU == 0)
+                            {
+                                TransformMatrix
+                                (
+                                    BulletTrajectory,
+                                    GameCameras[PlayerIndex].Location.Position, 
+                                    Error, 
+                                    GameCameras[PlayerIndex].UpVector
+                                );
+                            }
+                            else
+                            {
+                                CPUOrigin[0] = LocalPlayer->Location.Position[0];
+                                CPUOrigin[1] = LocalPlayer->Location.Position[1];
+                                CPUOrigin[2] = LocalPlayer->Location.Position[2] + LocalPlayer->Height;
+                                TransformMatrix
+                                (
+                                    BulletTrajectory,
+                                    CPUOrigin, 
+                                    Error, 
+                                    CPUUP
+                                );
+                            }
+                            
+
+                            LocalBullet->Location.VelocityFront[0] = BulletTrajectory[0][2] * LocalBullet->InitialSpeed;
+                            LocalBullet->Location.VelocityFront[1] = BulletTrajectory[1][2] * LocalBullet->InitialSpeed;
+                            LocalBullet->Location.VelocityFront[2] = BulletTrajectory[2][2] * LocalBullet->InitialSpeed;
+                            
+                            
+                        }
+                        else
+                        {
+                            //no z-target available. fire from camera
+                            
+                            //apply error
+                            if (LocalPlayer->IsCPU == 0)
+                            {
+                                PGCamera* LocalCamera = (PGCamera*)&GameCameras[PlayerIndex];
+                                float Decimator = 0.01f / LocalPlayer->ZoomFloat;
+                                Error[0] = LocalCamera->LookAt[0] - ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+                                Error[1] = LocalCamera->LookAt[1] - ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+                                Error[2] = LocalCamera->LookAt[2] - ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+
+                                Error[0] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+                                Error[1] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+                                Error[2] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+
+                                TransformMatrix(BulletTrajectory,LocalCamera->Location.Position, Error, LocalCamera->UpVector);
+
+                                LocalBullet->Location.VelocityFront[0] = BulletTrajectory[0][2] * (LocalBullet->InitialSpeed);
+                                LocalBullet->Location.VelocityFront[1] = BulletTrajectory[1][2] * (LocalBullet->InitialSpeed);
+                                LocalBullet->Location.VelocityFront[2] = BulletTrajectory[2][2] * (LocalBullet->InitialSpeed);
+                            }
+                            else
+                            {
+                                CPUOrigin[0] = LocalPlayer->Location.Position[0];
+                                CPUOrigin[1] = LocalPlayer->Location.Position[1];
+                                CPUOrigin[2] = LocalPlayer->Location.Position[2] + LocalPlayer->Height;
+                                float Decimator = 0.01f / LocalPlayer->ZoomFloat;
+                                CPUDirection[0] = 0;
+                                CPUDirection[1] = 100;
+                                CPUDirection[2] = 0;
+                                AlignZVector(CPUDirection, LocalPlayer->Location.Angle[2]);
+                                CPUDirection[0] += LocalPlayer->Location.Position[0];
+                                CPUDirection[1] += LocalPlayer->Location.Position[1];
+                                CPUDirection[2] += LocalPlayer->Location.Position[2] + LocalPlayer->Height;
+
+                                Error[0] = CPUDirection[0] - ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+                                Error[1] = CPUDirection[1] - ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+                                Error[2] = CPUDirection[2] -  ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+
+                                Error[0] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+                                Error[1] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+                                Error[2] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
+
+                                TransformMatrix(BulletTrajectory,CPUOrigin, Error, CPUUP);
+
+                                LocalBullet->Location.VelocityFront[0] = BulletTrajectory[0][2] * (LocalBullet->InitialSpeed);
+                                LocalBullet->Location.VelocityFront[1] = BulletTrajectory[1][2] * (LocalBullet->InitialSpeed);
+                                LocalBullet->Location.VelocityFront[2] = BulletTrajectory[2][2] * (LocalBullet->InitialSpeed);
+                            }
+                            
+                            
+                        }
+
+                        break;
+                    }
+                }
                 
-                
-                //Locate Bullet and direct trajectory.
-                LocalBullet->Location.Position[0] = LocalPlayer->Location.Position[0];
-                LocalBullet->Location.Position[1] = LocalPlayer->Location.Position[1];
-                LocalBullet->Location.Position[2] = LocalPlayer->Location.Position[2] + LocalPlayer->Height;
-
-                if (LocalPlayer->IsCPU == 0)
-                {
-                    LocalBullet->Location.Angle[0] = GameCameras[PlayerIndex].Location.Angle[0];
-                    LocalBullet->Location.Angle[1] = GameCameras[PlayerIndex].Location.Angle[1];
-                    LocalBullet->Location.Angle[2] = GameCameras[PlayerIndex].Location.Angle[2];
-                }
-                else
-                {
-                    LocalBullet->Location.Angle[0] = LocalPlayer->Location.Angle[0];
-                    LocalBullet->Location.Angle[1] = LocalPlayer->Location.Angle[1];
-                    LocalBullet->Location.Angle[2] = LocalPlayer->Location.Angle[2];
-                }
-                
-
-                if (LocalPlayer->ZTarget >= 0)
-                {
-                    BulletOrigin[0] = GamePlayers[LocalPlayer->ZTarget].Location.Position[0] - LocalPlayer->Location.Position[0];
-                    BulletOrigin[1] = GamePlayers[LocalPlayer->ZTarget].Location.Position[1] - LocalPlayer->Location.Position[1];
-                    BulletOrigin[2] = (GamePlayers[LocalPlayer->ZTarget].Location.Position[2] + GamePlayers[LocalPlayer->ZTarget].Height * 0.7f) - (LocalPlayer->Location.Position[2] + LocalPlayer->Height);
-
-                    NormalizeVector(BulletOrigin);
-                    BulletOrigin[0] *= 100.0f;
-                    BulletOrigin[1] *= 100.0f;
-                    BulletOrigin[2] *= 100.0f;
-                    BulletOrigin[0] += LocalPlayer->Location.Position[0];
-                    BulletOrigin[1] += LocalPlayer->Location.Position[1];
-                    BulletOrigin[2] += LocalPlayer->Location.Position[2] + LocalPlayer->Height;
-                    
-                    float Decimator = 0.01f / LocalPlayer->ZoomFloat;
-                    Error[0] = (BulletOrigin[0]) - ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-                    Error[1] = (BulletOrigin[1]) - ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-                    Error[2] = (BulletOrigin[2]) - ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-                    
-
-                    Error[0] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-                    Error[1] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-                    Error[2] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-
-                    if (LocalPlayer->IsCPU == 0)
-                    {
-                        TransformMatrix
-                        (
-                            BulletTrajectory,
-                            GameCameras[PlayerIndex].Location.Position, 
-                            Error, 
-                            GameCameras[PlayerIndex].UpVector
-                        );
-                    }
-                    else
-                    {
-                        CPUOrigin[0] = LocalPlayer->Location.Position[0];
-                        CPUOrigin[1] = LocalPlayer->Location.Position[1];
-                        CPUOrigin[2] = LocalPlayer->Location.Position[2] + LocalPlayer->Height;
-                        TransformMatrix
-                        (
-                            BulletTrajectory,
-                            CPUOrigin, 
-                            Error, 
-                            CPUUP
-                        );
-                    }
-                    
-
-                    LocalBullet->Location.VelocityFront[0] = BulletTrajectory[0][2] * LocalBullet->InitialSpeed;
-                    LocalBullet->Location.VelocityFront[1] = BulletTrajectory[1][2] * LocalBullet->InitialSpeed;
-                    LocalBullet->Location.VelocityFront[2] = BulletTrajectory[2][2] * LocalBullet->InitialSpeed;
-                    
-                    
-                }
-                else
-                {
-                    //no z-target available. fire from camera
-                    
-                    //apply error
-                    if (LocalPlayer->IsCPU == 0)
-                    {
-                        PGCamera* LocalCamera = (PGCamera*)&GameCameras[PlayerIndex];
-                        float Decimator = 0.01f / LocalPlayer->ZoomFloat;
-                        Error[0] = LocalCamera->LookAt[0] - ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-                        Error[1] = LocalCamera->LookAt[1] - ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-                        Error[2] = LocalCamera->LookAt[2] - ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-
-                        Error[0] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-                        Error[1] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-                        Error[2] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-
-                        TransformMatrix(BulletTrajectory,LocalCamera->Location.Position, Error, LocalCamera->UpVector);
-
-                        LocalBullet->Location.VelocityFront[0] = BulletTrajectory[0][2] * (LocalBullet->InitialSpeed);
-                        LocalBullet->Location.VelocityFront[1] = BulletTrajectory[1][2] * (LocalBullet->InitialSpeed);
-                        LocalBullet->Location.VelocityFront[2] = BulletTrajectory[2][2] * (LocalBullet->InitialSpeed);
-                    }
-                    else
-                    {
-                        CPUOrigin[0] = LocalPlayer->Location.Position[0];
-                        CPUOrigin[1] = LocalPlayer->Location.Position[1];
-                        CPUOrigin[2] = LocalPlayer->Location.Position[2] + LocalPlayer->Height;
-                        float Decimator = 0.01f / LocalPlayer->ZoomFloat;
-                        CPUDirection[0] = 0;
-                        CPUDirection[1] = 100;
-                        CPUDirection[2] = 0;
-                        AlignZVector(CPUDirection, LocalPlayer->Location.Angle[2]);
-                        CPUDirection[0] += LocalPlayer->Location.Position[0];
-                        CPUDirection[1] += LocalPlayer->Location.Position[1];
-                        CPUDirection[2] += LocalPlayer->Location.Position[2] + LocalPlayer->Height;
-
-                        Error[0] = CPUDirection[0] - ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-                        Error[1] = CPUDirection[1] - ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-                        Error[2] = CPUDirection[2] -  ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-
-                        Error[0] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-                        Error[1] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-                        Error[2] += ((float)(GetRNG(LocalWeapon->ErrorMax)) * Decimator);
-
-                        TransformMatrix(BulletTrajectory,CPUOrigin, Error, CPUUP);
-
-                        LocalBullet->Location.VelocityFront[0] = BulletTrajectory[0][2] * (LocalBullet->InitialSpeed);
-                        LocalBullet->Location.VelocityFront[1] = BulletTrajectory[1][2] * (LocalBullet->InitialSpeed);
-                        LocalBullet->Location.VelocityFront[2] = BulletTrajectory[2][2] * (LocalBullet->InitialSpeed);
-                    }
-                    
-                    
-                }
-
                 break;
             }
         }
+
+        
     }
 }
 

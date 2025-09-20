@@ -118,7 +118,7 @@ void soundCheck(void)
 
 
 /* Set audio data */
-void setAudioData(void)
+void lolsetAudioData(void)
 {
         
 

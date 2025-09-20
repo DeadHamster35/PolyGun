@@ -104,6 +104,7 @@ typedef ushort USVector[3];
 
 #define MAXHEALTH 75
 #define MAXSHIELD 75
+#define DEFAULTAGE 100
 
 #define PICKUPRADIUS 25.0f
 #define PICKUPDRAW  100.0f
@@ -216,7 +217,7 @@ typedef struct {
     Vector      LookAt;
     Vector      UpVector;
     short       FOVY, Impulse;
-    short       Near,Far;
+    float       Near,Far;
     PGScreen    Screen;
 } PGCamera;
 
@@ -287,8 +288,12 @@ typedef struct {
     short           CameraImpulseX, CameraImpulseY;
     short           MaxImpulseX, MaxImpulseY;
     unsigned char   ShotsFired, AmmoPerRound, HeatPerRound, AgePerRound;
+    
+    unsigned char   HeatLossFrames, HeatLoss;
+    ushort          MaxAge;
+
     short           ZoomLevel[2];
-    int             WeaponFlags;
+    ushort          WeaponFlags, ProjColor;
     WeaponBandolier Bandolier;
     HeadUpDisplay   HUD;
     
@@ -297,7 +302,7 @@ typedef struct {
 typedef struct {
     WeaponClass*    Class;    
     short           Magazine,Ammo;
-    short           Heat, Age;
+    unsigned char   Heat, Age, HeatFrames, PAD;
 }   WeaponEquipment;
 
 typedef struct {
@@ -352,12 +357,14 @@ typedef struct {
     SVector         Position;
     SVector         Angle;
     short           PickupType, PickupClass, Ammo, Magazine;
+    unsigned char   Heat, Age, HeatFrames, PAD;
 } StaticPickup;
 
 typedef struct {
     Locate          Location;
     short           Ammo, Magazine, Timer;
     unsigned char   PickupType, PickupClass;
+    unsigned char   Heat, Age, HeatFrames, PAD;
 } DynamicPickup;
 
 typedef struct {

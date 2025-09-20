@@ -380,17 +380,27 @@ void DrawAmmo(int PlayerIndex)
     gDPSetPrimColor(glistp++, 0, 0, 255, 255, 255, 255);
     gSPDisplayList(glistp++, &Draw_NumberPlate_T);
 
+    short AmmoValue = LocalEquip->Ammo;
+
+    if (LocalClass->WeaponFlags & WEAPON_HEAT)
+    {
+        AmmoValue = (short)(((float)LocalEquip->Age / (float)LocalClass->MaxAge) * 100.0f);
+        
+    }
+
+
     if (ReticleScale[PlayerIndex] > 0.5f)
     {
+        
         DrawNumberPlate((WeaponCoords[PlayerIndex][0]) + (ReticleScale[PlayerIndex] * 10), 
         (WeaponCoords[PlayerIndex][1]) + (ReticleScale[PlayerIndex] * 3), 
-        LocalEquip->Ammo, 0);
+        AmmoValue, 0);
     }
     else
     {
         DrawNumberPlate(WeaponCoords[PlayerIndex][0] + 6, 
         WeaponCoords[PlayerIndex][1] + 2, 
-        LocalEquip->Ammo, 1);
+        AmmoValue, 1);
     }
 
 

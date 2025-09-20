@@ -10,6 +10,7 @@
 #include "collision.h"
 #include "player.h"
 #include "pathfinding.h"
+#include "weapon.h"
 
 
 LevelScenario   LoadedScenario;
@@ -46,9 +47,8 @@ void LoadScenario(LevelScenario* Target)
 
     TotalSpawnPoints = 0;
     TotalStaticPicks = 0;
-
-    
     //Load the pickup/objective arrays from the static lists into the RAM allocations.
+    
     for (int Index = 0; Index < Target->ObjectCount; Index++)
     {
         StaticPickup* TargetPick = (StaticPickup*)&Target->ObjectList[Index];
@@ -74,21 +74,60 @@ void LoadScenario(LevelScenario* Target)
                 }
                 break;
             }
-
+            
             case PICKUPTYPE_WEAPON:
             {
-                StaticPickArray[TotalStaticPicks].Position[0] = TargetPick->Position[0];
-                StaticPickArray[TotalStaticPicks].Position[1] = TargetPick->Position[1];
-                StaticPickArray[TotalStaticPicks].Position[2] = TargetPick->Position[2];
-
-                StaticPickArray[TotalStaticPicks].Angle[0] = TargetPick->Angle[0];
-                StaticPickArray[TotalStaticPicks].Angle[1] = TargetPick->Angle[1];
-                StaticPickArray[TotalStaticPicks].Angle[2] = TargetPick->Angle[2];
                 
-                StaticPickArray[TotalStaticPicks].PickupType = TargetPick->PickupType;
-                StaticPickArray[TotalStaticPicks].PickupClass = TargetPick->PickupClass;
-                StaticPickArray[TotalStaticPicks].Ammo = TargetPick->Ammo;
-                StaticPickArray[TotalStaticPicks].Magazine = TargetPick->Magazine;
+                StaticPickup* TargetStatic = (StaticPickup*)&StaticPickArray[TotalStaticPicks];
+
+                for (int ThisVec = 0; ThisVec < 3; ThisVec++)
+                {
+                    TargetStatic->Position[ThisVec] = TargetPick->Position[ThisVec];
+                    TargetStatic->Angle[ThisVec] = TargetPick->Angle[ThisVec];
+                }
+
+                TargetStatic->PickupType = TargetPick->PickupType;
+                TargetStatic->PickupClass = TargetPick->PickupClass;
+
+                
+                WeaponClass *LocalClass = (WeaponClass*)WeaponClassArray[TargetPick->PickupClass];
+                
+
+                //ammo
+                if (TargetPick->Ammo == 0)
+                {
+                    TargetStatic->Ammo = LocalClass->MaxAmmo;
+                }
+                else
+                {
+                    TargetStatic->Ammo = TargetPick->Ammo;
+                }
+
+                //age
+                if (TargetPick->Age == 0)
+                {
+                    TargetStatic->Age = LocalClass->MaxAge; 
+                }
+                else
+                {
+                    TargetStatic->Age = TargetPick->Age;
+                }
+
+                //magazine
+                if (TargetPick->Magazine == 0)
+                {
+                    TargetStatic->Magazine = LocalClass->MagazineSize; 
+                }
+                else
+                {
+                    TargetStatic->Magazine = TargetPick->Magazine;
+                }
+                
+                //heat
+                TargetStatic->Heat = 0;
+                TargetStatic->HeatFrames = 0;
+
+                
                 TotalStaticPicks++;
                 break;
             }

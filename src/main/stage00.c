@@ -43,7 +43,6 @@ void makeDL00(void)
     glistp = &gfx_glist[gfx_gtask_no][0];
 
     SetSegment(0,0); 
-    SetSegment(2, osVirtualToPhysical(dynamicp));
 
     StoreRSPSegments();
 
@@ -73,19 +72,22 @@ void makeDL00(void)
 
 
         DrawLevelScene(dynamicp,ThisPlayer);
-        DrawBullets(ThisPlayer);
-        DrawPlayers(ThisPlayer);                
-        DrawPickups(ThisPlayer);
+        
+        //DrawBullets(ThisPlayer);
+        //DrawPlayers(ThisPlayer);                
+        //DrawPickups(ThisPlayer);
         
     }
-    gDPSetRenderMode(glistp++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
+    
     //Clear Z-Buffer before drawing FP views.
-    gfxClearZfb();
+    //gDPSetRenderMode(glistp++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
+    //gfxClearZfb();
     
     
     
+    
+    /*
     gDPSetCycleType(glistp++, G_CYC_1CYCLE);
-
     for (int ThisPlayer = 0; ThisPlayer < PlayerCount; ThisPlayer++)
     {
         //gDPPipeSync(glistp++);        
@@ -95,7 +97,7 @@ void makeDL00(void)
         DrawHUD(ThisPlayer); 
         gSPSetGeometryMode(glistp++, G_ZBUFFER);     
     }
-    
+    */
     
     gDPFullSync(glistp++);
     gSPEndDisplayList(glistp++);
@@ -103,12 +105,14 @@ void makeDL00(void)
     
     /* Activate the task and
        switch display buffers. */
-    
+    osWritebackDCache(&gfx_dynamic[gfx_gtask_no],
+                  sizeof(Dynamic));
+
     nuGfxTaskStart(&gfx_glist[gfx_gtask_no][0],
                    (s32)(glistp - gfx_glist[gfx_gtask_no]) * sizeof(Gfx),
                    NU_GFX_UCODE_F3DEX2, NU_SC_NOSWAPBUFFER);
 
-    nuDebTaskPerfBar0(1, 200, NU_SC_NOSWAPBUFFER);
+    //nuDebTaskPerfBar0(1, 200, NU_SC_NOSWAPBUFFER);
     
     /* Display the drawing state   */
     nuDebConTextPos(0, 2, 12);
@@ -147,10 +151,11 @@ void updateGame00(void)
 
     
     UpdatePlayerControls();
-    UpdateBotControls();
+    //UpdateBotControls();
     UpdatePlayerResponse();
-    CheckProjectiles();
-    CheckPlayerHealth();
+    //CheckProjectiles();
+    //CheckPlayerHealth();
+    //CheckWeaponHeat();
     
 
 }

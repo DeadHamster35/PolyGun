@@ -62,13 +62,13 @@ void mainproc(void)
     nuAuRetraceCount = 2;
     nuAuInit();
     /* Register audio data on ROM */
-    setAudioData();
+    //setAudioData();
 
     
     InitDMA();
 
-    nuAuSeqPlayerSetNo(0, 0);
-    nuAuSeqPlayerPlay(0);
+    //nuAuSeqPlayerSetNo(0, 0);
+    //nuAuSeqPlayerPlay(0);
 
     /* Set the stage number to 0 */
 
@@ -224,9 +224,10 @@ void InitNewGame()
     BotCount = 0;
     CreateScreenCoords();
     LevelIndex = 1;
-    LoadScenario((LevelScenario*)(uint)&RiverBed_Scenario);   
-
+    
     InitWeaponClasses();
+    LoadScenario((LevelScenario*)(uint)&BlockTest_Scenario);   
+
     InitActors();
     initAllPlayers();
     initScreenSystem();

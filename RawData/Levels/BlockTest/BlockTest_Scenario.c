@@ -6,9 +6,9 @@
 extern char _BlockTestSeg4[];
 extern char _BlockTestSeg5[];
 extern char _BlockTestSeg6[];
-PickupListObject BlockTest_PickupList[] = 
+StaticPickup BlockTest_PickupList[] = 
 {
-	{ { 176, -19, 3}, {0, 0, 0}, 0,0,0,0},
+	{ { 176, -19, 3}, {0, 0, 0}, 0,0,0,0, 0, 0, 0, 0},
 };
 
 
@@ -20,7 +20,7 @@ char* SerialNumber = "L164F354MK-QP4FEAEN";
 
 LevelScenario BlockTest_Scenario = 
 {
-	(PickupListObject*)&BlockTest_PickupList,
+	(StaticPickup*)&BlockTest_PickupList,
 	(char*)&LevelName,
 	(uint)&_BlockTestSeg4,
 	(uint)&_BlockTestSeg5,
