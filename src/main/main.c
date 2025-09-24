@@ -52,8 +52,8 @@ char conbuf[40];
 void mainproc(void)
 {
     /* The initialization of graphic */
-    nuScCreateScheduler(OS_VI_NTSC_LAN1, 2);
-    nuGfxInitEX2();
+    //nuScCreateScheduler(OS_VI_NTSC_LAN1, 2);
+    nuGfxInit();
 
     /* The initialization of the controller manager */
     nuContInit();
