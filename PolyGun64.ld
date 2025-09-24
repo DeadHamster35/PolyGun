@@ -55,9 +55,9 @@ SECTIONS
    {
       /* text */
 		BUILD_DIR/asm/entry.o(.start);
-      /usr/lib/n64/nusys/nusys_isv.o(.text);
+      /usr/lib/n64/nusys/nusys_rom.o(.text);
       BUILD_DIR/src/main*.o(.text);
-      */libultra_d.a:*.o(.text);
+      */libultra_rom.a:*.o(.text);
       BUILD_DIR/src/buffers*.o(.text);
       BUILD_DIR/asm/compression.o(.text);
       BUILD_DIR/asm/mathtables.o(.text); 
@@ -81,9 +81,9 @@ SECTIONS
       /usr/lib/n64/PR/gspS2DEX2.fifo.o(.text);
 
       /* data */
-      /usr/lib/n64/nusys/nusys_isv.o(.data*);
+      /usr/lib/n64/nusys/nusys_rom.o(.data*);
       BUILD_DIR/src/main*.o(.data*);
-      */libultra_d.a:*.o(.data*);
+      */libultra_rom.a:*.o(.data*);
       BUILD_DIR/src/buffers*.o(.data*);
       BUILD_DIR/asm/compression.o(.data*);
       BUILD_DIR/asm/mathtables.o(.data*);   
@@ -109,9 +109,9 @@ SECTIONS
       /usr/lib/n64/PR/gspS2DEX2.fifo.o(.data*);
 
       /* rodata */
-      /usr/lib/n64/nusys/nusys_isv.o(.*rodata*);
+      /usr/lib/n64/nusys/nusys_rom.o(.*rodata*);
       BUILD_DIR/src/main*.o(.*rodata*);
-      */libultra_d.a:*.o(.*rodata);
+      */libultra_rom.a:*.o(.*rodata);
       BUILD_DIR/src/buffers*.o(.*rodata*);
       BUILD_DIR/asm/compression.o(.*rodata*);
      BUILD_DIR/asm/mathtables.o(.*rodata*);   
@@ -130,11 +130,11 @@ SECTIONS
    END_SEG(code)
    BEGIN_NOLOAD(code)
    {
-      /usr/lib/n64/nusys/nusys_isv.o(COMMON);
-      /usr/lib/n64/nusys/nusys_isv.o(.scommon);
-      /usr/lib/n64/nusys/nusys_isv.o(.*bss*);
+      /usr/lib/n64/nusys/nusys_rom.o(COMMON);
+      /usr/lib/n64/nusys/nusys_rom.o(.scommon);
+      /usr/lib/n64/nusys/nusys_rom.o(.*bss*);
       BUILD_DIR/src/main*.o(.*bss*);
-      */libultra_d.a:*.o(.*bss*);
+      */libultra_rom.a:*.o(.*bss*);
       BUILD_DIR/src/buffers*.o(.*bss*);
       BUILD_DIR/asm/compression.o(.*bss*);
     BUILD_DIR/asm/mathtables.o(.*bss*);

@@ -11,9 +11,9 @@ SECTIONS
    _codeSegmentStart = ADDR(.code); _codeSegmentRomStart = __romPos; .code 0x80025c00 : AT(__romPos) SUBALIGN(16)
    {
   build/asm/entry.o(.start);
-      /usr/lib/n64/nusys/nusys_isv.o(.text);
+      /usr/lib/n64/nusys/nusys_rom.o(.text);
       build/src/main*.o(.text);
-      */libultra_d.a:*.o(.text);
+      */libultra_rom.a:*.o(.text);
       build/src/buffers*.o(.text);
       build/asm/compression.o(.text);
       build/asm/mathtables.o(.text);
@@ -31,9 +31,9 @@ SECTIONS
       /usr/lib/n64/PR/gspF3DEX2.NoN.fifo.o(.text);
       /usr/lib/n64/PR/gspF3DLX2.Rej.fifo.o(.text);
       /usr/lib/n64/PR/gspS2DEX2.fifo.o(.text);
-      /usr/lib/n64/nusys/nusys_isv.o(.data*);
+      /usr/lib/n64/nusys/nusys_rom.o(.data*);
       build/src/main*.o(.data*);
-      */libultra_d.a:*.o(.data*);
+      */libultra_rom.a:*.o(.data*);
       build/src/buffers*.o(.data*);
       build/asm/compression.o(.data*);
       build/asm/mathtables.o(.data*);
@@ -50,9 +50,9 @@ SECTIONS
       /usr/lib/n64/PR/gspF3DEX2.NoN.fifo.o(.data*);
       /usr/lib/n64/PR/gspF3DLX2.Rej.fifo.o(.data*);
       /usr/lib/n64/PR/gspS2DEX2.fifo.o(.data*);
-      /usr/lib/n64/nusys/nusys_isv.o(.*rodata*);
+      /usr/lib/n64/nusys/nusys_rom.o(.*rodata*);
       build/src/main*.o(.*rodata*);
-      */libultra_d.a:*.o(.*rodata);
+      */libultra_rom.a:*.o(.*rodata);
       build/src/buffers*.o(.*rodata*);
       build/asm/compression.o(.*rodata*);
      build/asm/mathtables.o(.*rodata*);
@@ -65,11 +65,11 @@ SECTIONS
    _codeSegmentEnd = ALIGN(ADDR(.code) + SIZEOF(.code),0x10); _codeSegmentRomEnd = _codeSegmentEnd - _codeSegmentStart + _codeSegmentRomStart; __romPos = _codeSegmentRomEnd; . = _codeSegmentEnd;
    _codeSegmentBssStart = ADDR(.code.noload); .code.noload (NOLOAD) :
    {
-      /usr/lib/n64/nusys/nusys_isv.o(COMMON);
-      /usr/lib/n64/nusys/nusys_isv.o(.scommon);
-      /usr/lib/n64/nusys/nusys_isv.o(.*bss*);
+      /usr/lib/n64/nusys/nusys_rom.o(COMMON);
+      /usr/lib/n64/nusys/nusys_rom.o(.scommon);
+      /usr/lib/n64/nusys/nusys_rom.o(.*bss*);
       build/src/main*.o(.*bss*);
-      */libultra_d.a:*.o(.*bss*);
+      */libultra_rom.a:*.o(.*bss*);
       build/src/buffers*.o(.*bss*);
       build/asm/compression.o(.*bss*);
     build/asm/mathtables.o(.*bss*);

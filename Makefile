@@ -51,7 +51,7 @@ C_FILES           := $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.c))
 S_FILES           := $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.s))
 
 # Object files
-O_FILES := /usr/lib/n64/nusys/nusys_isv.o \
+O_FILES := /usr/lib/n64/nusys/nusys_rom.o \
            $(foreach file,$(C_FILES),$(BUILD_DIR)/$(file:.c=.o)) \
            $(foreach file,$(S_FILES),$(BUILD_DIR)/$(file:.s=.o)) \
 		   $(BOOT_OBJ)
@@ -143,7 +143,7 @@ $(BOOT_OBJ): $(BOOT)
 # Link final ELF file
 $(ELF): $(O_FILES) $(BUILD_DIR)/$(LD_SCRIPT)
 	@$(PRINT) "$(GREEN)Linking ELF file:  $(BLUE)$@ $(NO_COL)\n"
-	$(V)$(LD) -L $(BUILD_DIR) -T $(BUILD_DIR)/$(LD_SCRIPT) -Map $(BUILD_DIR)/$(TARGET).map --no-check-sections -o $@ $(O_FILES) -L/usr/lib/n64/nusys $(NUAUDIOLIB) -lnusys -L/usr/lib/n64 -lultra_d -L$(N64_LIBGCCDIR) -lgcc
+	$(V)$(LD) -L $(BUILD_DIR) -T $(BUILD_DIR)/$(LD_SCRIPT) -Map $(BUILD_DIR)/$(TARGET).map --no-check-sections -o $@ $(O_FILES) -L/usr/lib/n64/nusys $(NUAUDIOLIB) -lnusys -L/usr/lib/n64  -L$(N64_LIBGCCDIR) -lgcc
 
 # Build ROM
 $(ROM): $(ELF)

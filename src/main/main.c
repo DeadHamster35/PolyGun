@@ -59,7 +59,7 @@ void mainproc(void)
     nuContInit();
 
     /* The initialization of audio */
-    nuAuRetraceCount = 2;
+    //SnuAuRetraceCount = 2;
     nuAuInit();
     /* Register audio data on ROM */
     setAudioData();
